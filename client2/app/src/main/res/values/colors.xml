@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <color name="red_a">#ea4335</color>
+    <color name="blue_b">#1976d2</color>
+    <color name="move_clock">#66000000</color>
+    <color name="attack_clock">#689a14</color>
+    <color name="energy">#689a14</color>
+
+</resources>

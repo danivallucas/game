@@ -1,0 +1,35 @@
+<resources>
+    <!-- Default screen margins, per the Android Design guidelines. -->
+    <dimen name="activity_horizontal_margin">16dp</dimen>
+    <dimen name="activity_vertical_margin">32dp</dimen>
+
+    <dimen name="spacing">8dp</dimen>
+
+    <!-- Default screen margins, per the Android Design guidelines. -->
+
+
+
+    <dimen name="app_margin">0dp</dimen>
+    <dimen name="player_icon_width">56dp</dimen>
+    <dimen name="player_icon_height">56dp</dimen>
+    <dimen name="player_name_height">16dp</dimen>
+    <dimen name="cell_grid_margin">5dp</dimen>
+    <dimen name="pill_width">40dp</dimen>
+    <dimen name="badge_width">14dp</dimen>
+    <dimen name="badge_margin">7dp</dimen>
+    <dimen name="cell_width">63dp</dimen> <!-- player_icon_width + badge_margin -->
+    <dimen name="cell_height">79dp</dimen> <!-- badge_margin + player_icon_height + player_name_height -->
+    <dimen name="emoji_login">32dp</dimen>
+
+
+    <dimen name="attack_button">36dp</dimen> <!-- cada botão Left, Up, Right, Down -->
+    <dimen name="attack_control">72dp</dimen> <!-- os 4 botões num grid 2x2 -->
+    <dimen name="move_button">36dp</dimen> <!-- cada botão Left, Up, Right, Down -->
+    <dimen name="move_control">72dp</dimen> <!-- os 4 botões num grid 2x2 -->
+    <dimen name="controls_container">102dp</dimen> <!-- ao rotacionar o move_control, a altura fica -> raiz de 72x72x2 = 102 (pitágoras) -->
+    <!--<dimen name="move_control_margin_top">15dp</dimen> &lt;!&ndash; tem de colocar margem no topo (metade da dif) -> (102-72)/2 &ndash;&gt;-->
+    <dimen name="radio_button_width">30dp</dimen>
+    <dimen name="radio_button_height">20dp</dimen>
+
+    <dimen name="textbox_height_small">16dp</dimen>
+</resources>

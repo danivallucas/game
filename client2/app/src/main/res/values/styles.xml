@@ -1,0 +1,9 @@
+<resources>
+
+    <!-- Cell application theme. -->
+    <style name="AppTheme" parent="@android:style/Theme.Wallpaper.NoTitleBar">
+        <!-- Customize your theme here. -->
+        <item name="android:windowTranslucentStatus">true</item>
+    </style>
+
+</resources>
