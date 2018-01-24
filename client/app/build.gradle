@@ -1,20 +1,22 @@
 buildscript {
     repositories {
         jcenter()
+        google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.3.1'
+        classpath 'com.android.tools.build:gradle:3.0.1'
     }
 }
 apply plugin: 'com.android.application'
 
 repositories {
     jcenter()
+    google()
 }
 
 android {
     compileSdkVersion 21
-    buildToolsVersion '25.0.0'
+    buildToolsVersion '26.0.2'
     defaultConfig {
         applicationId 'com.danival.game'
         minSdkVersion 19
@@ -40,5 +42,9 @@ dependencies {
     compile('io.socket:socket.io-client:0.8.1') {
         exclude group: 'org.json', module: 'json'
     }
+    compile 'com.google.maps.android:android-maps-utils:0.5+'
+    compile 'com.google.maps:google-maps-services:0.1.20'
 
+    implementation 'com.google.android.gms:play-services-maps:11.8.0'
+    implementation 'com.google.android.gms:play-services-location:11.8.0'
 }

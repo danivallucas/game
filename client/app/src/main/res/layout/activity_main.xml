@@ -7,6 +7,19 @@
     android:paddingBottom="0dp"
     android:background="#33000000">
 
+    <fragment xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/map"
+        tools:context=".MainActivity"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        app:mapType="normal"
+        app:cameraTilt="60"
+        app:uiTiltGestures="false"
+        app:uiCompass="false"
+        />
+
     <TextView
         android:id="@+id/status"
         android:text=""
@@ -14,252 +27,41 @@
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_alignParentLeft="true"
-        android:textColor="#FFFFFF"
-        android:shadowColor="#7F000000"
+        android:textColor="#000000"
+        android:shadowColor="#7FFFFFFF"
         android:shadowDx="1"
         android:shadowDy="1"
         android:shadowRadius="2"/>
 
-    <RelativeLayout
-        android:id="@+id/score"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="5dp"
-        android:layout_marginRight="5dp"
-        android:padding="10dp">
-        <TextView
-            android:id="@+id/scoreA"
-            android:text="EQUIPE A - 0"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentTop="true"
-            android:layout_alignParentLeft="true"
-            android:textColor="#FFFFFF"
-            android:shadowColor="#7F000000"
-            android:shadowDx="1"
-            android:shadowDy="1"
-            android:shadowRadius="2"/>
-        <TextView
-            android:id="@+id/scoreB"
-            android:text="0 - EQUIPE B"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentTop="true"
-            android:layout_alignParentRight="true"
-            android:textColor="#FFFFFF"
-            android:shadowColor="#7F000000"
-            android:shadowDx="1"
-            android:shadowDy="1"
-            android:shadowRadius="2"/>
-    </RelativeLayout>
-
-    <HorizontalScrollView
-        android:id="@+id/myHorizontalScrollView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:scrollbars="none"
-        android:layout_margin="0dp"
-        android:padding="0dp"
-        >
-
-        <RelativeLayout
-            android:id="@+id/grid"
-            android:layout_width="1440dp"
-            android:layout_height="100dp"
-            android:scrollbars="none"
-            android:orientation="horizontal"
-            android:layout_margin="0dp"
-            android:padding="0dp"
-            android:clickable="true"
-            android:background="#00000000">
-        </RelativeLayout>
-    </HorizontalScrollView>
-
-    <!--Button
-        android:id="@+id/btnSelector1"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="@drawable/tab_selector"
-        android:padding="16sp"/-->
-    <!--ToggleButton
-        android:id="@+id/toggleButton2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textOn="on"
-        android:textOff="off"
-        android:checked="true" /-->
-
-    <RadioGroup
-        android:id="@+id/rgPagging"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:orientation="horizontal">
-    </RadioGroup>
-
-    <LinearLayout
-        android:id="@+id/controlBar"
-        android:layout_width="match_parent"
-        android:layout_height="@dimen/controls_container"
-        android:layout_centerHorizontal="true"
-        android:gravity="center"
-        android:background="#66000000">
-
-        <RelativeLayout
-            android:layout_width="@dimen/controls_container"
-            android:layout_height="@dimen/controls_container"
-            android:layout_marginLeft="0dp"
-            android:layout_marginRight="0dp">
-
-            <TextView
-                android:id="@+id/energy"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentRight="true"
-                android:layout_alignParentTop="true"
-                android:layout_marginRight="1dp"
-                android:layout_marginTop="1dp"
-                android:text="5"
-                android:textColor="#FFFFFF"
-                android:textSize="14dp"
-                android:background="@drawable/energy"/>
-
-            <ProgressBar
-                android:id="@+id/moveClock"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:layout_alignParentRight="true"
-                android:layout_alignParentTop="true"
-                android:max="5000"
-                android:progress="5000"
-                android:rotation="270"
-                android:progressDrawable="@drawable/move_clock"
-                android:visibility="invisible"/>
+    <Button
+        android:id="@+id/btnStartRoute"
+        android:layout_width="65dp"
+        android:layout_height="65dp"
+        android:onClick="startRoute"
+        android:background="@drawable/oval"
+        android:text="+"
+        android:textSize="24dp"
+        android:textColor="#FFFFFF"
+        android:elevation="10dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginBottom="25dp"
+        android:layout_marginRight="25dp"/>
+    <Button
+        android:id="@+id/btnOk"
+        android:layout_width="65dp"
+        android:layout_height="65dp"
+        android:onClick="finishRoute"
+        android:background="@drawable/oval"
+        android:text="Ok"
+        android:textSize="24dp"
+        android:textColor="#FFFFFF"
+        android:elevation="10dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginBottom="25dp"
+        android:layout_marginRight="25dp"
+        android:visibility="invisible"/>
 
 
-            <RelativeLayout
-                android:id="@+id/moveControl"
-                android:layout_width="@dimen/move_control"
-                android:layout_height="@dimen/move_control"
-                android:layout_centerHorizontal="true"
-                android:layout_centerVertical="true"
-                android:padding="0dp"
-                android:rotation="45"
-                >
-                <ImageView
-                    android:id="@+id/moveControlBG"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/move"/>
-                <Button
-                    android:id="@+id/btnUp"
-                    android:layout_width="@dimen/move_button"
-                    android:layout_height="@dimen/move_button"
-                    android:onClick="moveOnClick"
-                    android:layout_marginLeft="0dp"
-                    android:layout_marginTop="0dp"
-                    android:background="@null"/>
-                <Button
-                    android:id="@+id/btnRight"
-                    android:layout_width="@dimen/move_button"
-                    android:layout_height="@dimen/move_button"
-                    android:onClick="moveOnClick"
-                    android:layout_marginLeft="@dimen/move_button"
-                    android:layout_marginTop="0dp"
-                    android:background="@null"/>
-                <Button
-                    android:id="@+id/btnLeft"
-                    android:layout_width="@dimen/move_button"
-                    android:layout_height="@dimen/move_button"
-                    android:onClick="moveOnClick"
-                    android:layout_marginLeft="0dp"
-                    android:layout_marginTop="@dimen/move_button"
-                    android:background="@null"/>
-                <Button
-                    android:id="@+id/btnDown"
-                    android:layout_width="@dimen/move_button"
-                    android:layout_height="@dimen/move_button"
-                    android:onClick="moveOnClick"
-                    android:layout_marginLeft="@dimen/move_button"
-                    android:layout_marginTop="@dimen/move_button"
-                    android:background="@null"/>
-
-            </RelativeLayout>
-
-        </RelativeLayout>
-
-        <RelativeLayout
-            android:layout_width="@dimen/controls_container"
-            android:layout_height="@dimen/controls_container"
-            android:layout_marginLeft="0dp"
-            android:layout_marginRight="0dp">
-        <ProgressBar
-            android:id="@+id/attackClock"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:layout_alignParentRight="true"
-            android:layout_alignParentTop="true"
-            android:max="5000"
-            android:progress="0"
-            android:rotation="270"
-            android:progressDrawable="@drawable/attack_clock"
-            android:visibility="invisible"/>
-
-            <RelativeLayout
-                android:id="@+id/attackControl"
-                android:layout_width="@dimen/attack_control"
-                android:layout_height="@dimen/attack_control"
-                android:layout_centerHorizontal="true"
-                android:layout_centerVertical="true"
-                android:padding="0dp"
-                android:rotation="45">
-                <ImageView
-                    android:id="@+id/attackControlBG"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/attack"/>
-                <Button
-                    android:id="@+id/btnBombUp"
-                    android:layout_width="@dimen/attack_button"
-                    android:layout_height="@dimen/attack_button"
-                    android:onClick="attackOnClick"
-                    android:layout_marginLeft="0dp"
-                    android:layout_marginTop="0dp"
-                    android:background="@null"/>
-                <Button
-                    android:id="@+id/btnBombRight"
-                    android:layout_width="@dimen/attack_button"
-                    android:layout_height="@dimen/attack_button"
-                    android:onClick="attackOnClick"
-                    android:layout_marginLeft="@dimen/attack_button"
-                    android:layout_marginTop="0dp"
-                    android:background="@null"/>
-                <Button
-                    android:id="@+id/btnBombLeft"
-                    android:layout_width="@dimen/attack_button"
-                    android:layout_height="@dimen/attack_button"
-                    android:onClick="attackOnClick"
-                    android:layout_marginLeft="0dp"
-                    android:layout_marginTop="@dimen/attack_button"
-                    android:background="@null"/>
-                <Button
-                    android:id="@+id/btnBombDown"
-                    android:layout_width="@dimen/attack_button"
-                    android:layout_height="@dimen/attack_button"
-                    android:onClick="attackOnClick"
-                    android:layout_marginLeft="@dimen/attack_button"
-                    android:layout_marginTop="@dimen/attack_button"
-                    android:background="@null"/>
-
-            </RelativeLayout>
-
-        </RelativeLayout>
-
-
-
-    </LinearLayout>
 </RelativeLayout>

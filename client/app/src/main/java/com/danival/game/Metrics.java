@@ -68,54 +68,6 @@ public class Metrics {
         return top;
     }
 
-    public int getGridWidth() {
-        return Math.round(w*main.PAGES_COUNT);
-    }
-
-    public int getGridHeight() {
-        return faixa3;
-    }
-
-/*
-    public int getGridBgX(int i) {
-        return hPadding + ((playerWidth + hSpace) * (i%main.COLUMNS_COUNT));
-    }
-
-    public int getGridBgY(int i) {
-        return ((playerHeight + vSpace) * (i/main.COLUMNS_COUNT));
-    }
-
-    public int getGridBgN(int x, int y) {
-        return (y-1)*main.COLUMNS_COUNT + (x-1); // posição no array gridBG
-    }
-*/
-
-    public int getCol(int x) {
-        return (x / (playerWidth + hSpace)) + 1;
-    }
-
-    public int getRow(int y) {
-        return ( (y + Math.round(vSpace/2)) / (playerHeight + vSpace) ) + 1;
-    }
-
-    public int getX(int col) {
-        return hPadding + ((playerWidth + hSpace) * (col-1));
-    }
-
-    public int getY(int row) {
-        return ((playerHeight + vSpace) * (row-1));
-    }
-
-    // Scroll máximo em que o player continue visível na tela
-    public int getMaxScrollPlayerVisible(int x) {
-        return x - hPadding - (playerWidth + hSpace);
-    }
-
-    // Scroll mínimo em que o player continue visível na tela
-    public int getMinScrollPlayerVisible(int x) {
-        return x - hPadding - 2*(playerWidth + hSpace);
-    }
-
     public int getSizeIcon4x4() {
         int gridMargin = (int) main.getResources().getDimension(R.dimen.cell_grid_margin);
         return Math.round( (playerWidth-(2*gridMargin)) / 2);

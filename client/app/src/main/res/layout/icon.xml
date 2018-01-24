@@ -5,14 +5,14 @@
     >
 
     <ImageView
-        android:id="@+id/player_icon"
+        android:id="@+id/icon_emoji"
         android:layout_width="@dimen/player_icon_width"
         android:layout_height="@dimen/player_icon_height"
         android:layout_marginTop="@dimen/badge_margin"
         android:layout_alignParentLeft="true"
         android:visibility="visible"/>
     <TextView
-        android:id="@+id/player_life"
+        android:id="@+id/children_count"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentRight="true"
@@ -20,17 +20,17 @@
         android:text="3"
         android:textColor="#FFFFFF"
         android:textSize="14dp"
-        android:background="@drawable/life_a"/>
+        android:background="@drawable/children_count"/>
 
     <RelativeLayout
-        android:id="@+id/player_name_container"
+        android:id="@+id/icon_label_container"
         android:layout_width="@dimen/player_icon_width"
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_alignParentBottom="true">
 
         <TextView
-            android:id="@+id/player_name"
+            android:id="@+id/icon_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"

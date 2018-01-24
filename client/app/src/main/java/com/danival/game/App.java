@@ -8,6 +8,8 @@ import java.net.URISyntaxException;
 public class App extends Application {
 
     private Socket mSocket;
+    private int tag = 0;
+
     {
         try {
             mSocket = IO.socket(Constants.SERVER_URL);
@@ -19,4 +21,7 @@ public class App extends Application {
     public Socket getSocket() {
         return mSocket;
     }
+
+    public int getTag() { return tag; }
+    public void setTag(int _tag) { tag = _tag; }
 }

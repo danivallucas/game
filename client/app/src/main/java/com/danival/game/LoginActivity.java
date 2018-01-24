@@ -23,22 +23,30 @@ import android.widget.Toast;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import io.socket.client.Socket;
+
 
 public class LoginActivity extends Activity {
 
     private int previousSelectedPosition = -1;
-    GridView gridView;
+    private GridView gridView;
+    private App app;
+    protected Socket mSocket;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
+        app = (App) this.getApplication();
+        mSocket = app.getSocket();
+
         final EditText mUsernameView = (EditText) findViewById(R.id.username_input);
         Button signInButton = (Button) findViewById(R.id.sign_in_button);
         signInButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
+
                 if (previousSelectedPosition == -1) {
                     Toast.makeText(getApplicationContext(), "Selecione seu emoji", Toast.LENGTH_LONG).show();
                 } else {
@@ -73,14 +81,22 @@ public class LoginActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        /*
+        app.setTag(1);
+
+        // AUTO LOGIN
         Intent intent = new Intent();
-        intent.putExtra("mPlayerName", "a");
+        intent.putExtra("mPlayerName", "Danival");
+        intent.putExtra("mEmoji", 0);
         setResult(RESULT_OK, intent);
         finish();
-        */
+    }
 
-
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (!isFinishing()) {
+            mSocket.disconnect();
+        }
     }
 
     public class ImageAdapter extends BaseAdapter {
