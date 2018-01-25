@@ -136,6 +136,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         mSocket.on("onMove", onMove);
         mSocket.on("onLegFinished", onLegFinished);
         mSocket.on("onGrow", onGrow);
+        mSocket.on("onStop", onStop);
     }
 
     @Override
@@ -158,6 +159,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         mSocket.off("onMove", onMove);
         mSocket.off("onLegFinished", onLegFinished);
         mSocket.off("onGrow", onGrow);
+        mSocket.off("onStop", onStop);
     }
 
     private void setUpGame() {
@@ -375,8 +377,11 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         player.setLocation(data.getDouble("lat"), data.getDouble("lng"));
                         player.drawOnMap((id == mPlayerId));
                         //player.drawArea(data.getDouble("lat1"), data.getDouble("lng1"), data.getDouble("lat2"), data.getDouble("lng2"));
-                        if (id == mPlayerId)
+                        if (id == mPlayerId) {
                             isSpawning = false;
+                            findViewById(R.id.btnStartRoute).setVisibility(View.VISIBLE);
+                        }
+
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
                 }
             });
@@ -447,6 +452,11 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         JSONObject data = (JSONObject) args[0];
                         int id = data.getInt("id");
                         Player player = game.getPlayer(id);
+                        if (player.legList.size() == 1) {
+                            // se é a última leg, esconde o STOP
+                            findViewById(R.id.btnStopPlayer).setVisibility(View.GONE);
+                            findViewById(R.id.btnStartRoute).setVisibility(View.VISIBLE);
+                        }
                         player.onLegFinished(data.getString("status"), data.getDouble("lat"), data.getDouble("lng"));
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
                 }
@@ -465,6 +475,23 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         int id = data.getInt("id");
                         Player player = game.getPlayer(id);
                         player.onGrow(data.getLong("energy"));
+                    } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
+                }
+            });
+        }
+    };
+
+    private Emitter.Listener onStop = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        JSONObject data = (JSONObject) args[0];
+                        int id = data.getInt("id");
+                        Player player = game.getPlayer(id);
+                        player.stop(data.getDouble("lat"), data.getDouble("lng"));
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
                 }
             });
@@ -655,8 +682,8 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     public void finishRoute(View v) {
         if (!isBuildingRoute) return;
         if (routeLocations.size() < 2) return;
-        findViewById(R.id.btnStartRoute).setVisibility(View.VISIBLE);
         findViewById(R.id.btnOk).setVisibility(View.GONE);
+        findViewById(R.id.btnStopPlayer).setVisibility(View.VISIBLE);
         if (routePolyline != null)
             routePolyline.remove();
 
@@ -665,7 +692,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             for (int i = 1; i<routeLocations.size()-1; i++)
                 wayPointList.add(routeLocations.get(i).latitude + "," + routeLocations.get(i).longitude);
             DirectionsResult result = DirectionsApi.newRequest(getGeoContext())
-                    .mode(TravelMode.WALKING)
+                    .mode(TravelMode.DRIVING)
                     .origin(new com.google.maps.model.LatLng(routeLocations.get(0).latitude, routeLocations.get(0).longitude))
                     .destination(new com.google.maps.model.LatLng(routeLocations.get(routeLocations.size()-1).latitude, routeLocations.get(routeLocations.size()-1).longitude))
                     //.waypoints("-18.945003995554103,-48.2798021659255|-18.93697,-48.28301")
@@ -677,6 +704,14 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         } catch (Exception e) { Log.e("game", Log.getStackTraceString(e)); }
         routeLocations.clear();
         isBuildingRoute = false;
+    }
+
+    public void stopPlayer(View v) {
+        Player player = game.getPlayer(mPlayerId);
+        findViewById(R.id.btnStopPlayer).setVisibility(View.GONE);
+        findViewById(R.id.btnStartRoute).setVisibility(View.VISIBLE);
+        player.stop(player.lat, player.lng);
+        mSocket.emit("stop", player.lat, player.lng);
     }
 
 }

@@ -166,6 +166,16 @@ public class Player {
         drawEnergy();
     }
 
+    public void stop(double _lat, double _lng) {
+        status = "in";
+        lat = _lat;
+        lng = _lng;
+        for (int i = 0; i < legList.size(); i++)
+            legList.get(i).clear();
+        legList.clear();
+    }
+
+
 
 /*
     public void drawArea(double lat1, double lng1, double lat2, double lng2) {
