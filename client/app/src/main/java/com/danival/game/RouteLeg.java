@@ -77,7 +77,7 @@ public class RouteLeg {
             latLng3 = latLng;
         }
         latLng4 = new LatLng(pointList.get(pointList.size()-1).lat, pointList.get(pointList.size()-1).lng);
-        endPolyline = context.mMap.addPolyline(new PolylineOptions().width(30).color(0xCC3B7AC9).jointType(JointType.ROUND).pattern(pattern).endCap(new CustomCap(BitmapDescriptorFactory.fromResource(R.drawable.point),64)).add(latLng3, latLng4));
+        endPolyline = context.mMap.addPolyline(new PolylineOptions().width(30).color(0xCC3B7AC9).jointType(JointType.ROUND).pattern(pattern).startCap(new CustomCap(BitmapDescriptorFactory.fromResource(R.drawable.point),64)).add(latLng4, latLng3)); // ao contrário (efeito na linha pontilhada no DIRECT)
         drawingFirstTime =false;
     }
 

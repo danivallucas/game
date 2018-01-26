@@ -143,7 +143,10 @@ public class Player {
             }
         } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
         status = "moving";
-        // o Animator moverá este player no mapa
+        drawMoving(); // para calcular a posição de acordo com o tempo de movimento decorrido
+        if (marker == null) // se logou e este player já estava em movimento, ainda não está desenhado no mapa
+            drawOnMap(true);
+        // o Animator continuará movendo este player no mapa
     }
 
     public void drawLegList(int pointIndex) {
@@ -173,6 +176,37 @@ public class Player {
         for (int i = 0; i < legList.size(); i++)
             legList.get(i).clear();
         legList.clear();
+    }
+
+    public void drawMoving() {
+        if (!status.equals("moving")) return;
+        long now = System.currentTimeMillis();
+        RouteLeg leg = legList.get(0);
+        if (now > leg.endTime) {
+            status = "in";
+            Point lastPoint = leg.pointList.get(leg.pointList.size()-1);
+            setLocation(lastPoint.lat, lastPoint.lng);
+            return;
+        }
+        long legStart = leg.endTime - leg.totalDuration; // em que miliseg
+        long pos = (now < legStart) ? 0 : now - legStart;
+        int j = 0;
+        Point point1 = leg.pointList.get(j);
+        long sum = point1.duration;
+        while ( (pos > sum) && (j < leg.pointList.size()-1) ) {
+            point1 = leg.pointList.get(++j);
+            sum += point1.duration;
+        }
+        if (pos > sum) {
+            lat = point1.lat;
+            lng = point1.lng;
+        } else {
+            Point point2 = leg.pointList.get(++j);
+            double percent = 1 - ( (sum - pos) / (double)point1.duration );
+            lat = point1.lat + (point2.lat - point1.lat) * percent;
+            lng = point1.lng + (point2.lng - point1.lng) * percent;
+        }
+        drawLegList(j);
     }
 
 

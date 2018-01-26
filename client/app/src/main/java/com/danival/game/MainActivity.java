@@ -335,9 +335,9 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                             JSONObject data = list.getJSONObject(i);
                             Player player = game.newPlayer(data.getInt("id"), data.getString("name"), data.getInt("emoji"), data.getBoolean("onLine"), data.getString("status"), data.getDouble("lat"), data.getDouble("lng"), data.getLong("energy"));
                             if (player.id == mPlayerId) {
-                                if (player.status.equals("in")) {
+                                if (player.status.equals("in"))
                                     player.drawOnMap(true);
-                                } else {
+                                if (player.status.equals("out")) {
                                     goSpawnState();
                                 }
                             }
@@ -581,33 +581,33 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 .setWriteTimeout(10, TimeUnit.SECONDS);
     }
 
-    private String encodeRoute(List<LatLng> locations, DirectionsResult result) {
+    private String encodeRoute(DirectionsResult result) {
         JSONArray legArray = new JSONArray();
         try {
-            DirectionsRoute route = result.routes[0];
-
-            for (int i = 0; i < route.legs.length; i++) {
-                DirectionsLeg leg = route.legs[i];
+            for (int i = 0; i < routeLocations.size()-1; i++) {
                 JSONArray pointArray = new JSONArray();
                 JSONObject pointObject = new JSONObject();
-                pointObject.put("lat", locations.get(i).latitude);
-                pointObject.put("lng", locations.get(i).longitude);
+                pointObject.put("lat", routeLocations.get(i).latitude);
+                pointObject.put("lng", routeLocations.get(i).longitude);
                 pointArray.put(pointObject);
 
-                for (int j = 0; j < leg.steps.length; j++) {
-                    DirectionsStep step = leg.steps[j];
-                    List<com.google.maps.model.LatLng> polyline = step.polyline.decodePath();
-                    for (int k = 0; k < polyline.size(); k++) {
-                        pointObject = new JSONObject();
-                        pointObject.put("lat", polyline.get(k).lat);
-                        pointObject.put("lng", polyline.get(k).lng);
-                        pointArray.put(pointObject);
+                if (result != null) {
+                    DirectionsLeg leg = result.routes[0].legs[i];
+                    for (int j = 0; j < leg.steps.length; j++) {
+                        DirectionsStep step = leg.steps[j];
+                        List<com.google.maps.model.LatLng> polyline = step.polyline.decodePath();
+                        for (int k = 0; k < polyline.size(); k++) {
+                            pointObject = new JSONObject();
+                            pointObject.put("lat", polyline.get(k).lat);
+                            pointObject.put("lng", polyline.get(k).lng);
+                            pointArray.put(pointObject);
+                        }
                     }
                 }
 
                 pointObject = new JSONObject();
-                pointObject.put("lat", locations.get(i+1).latitude);
-                pointObject.put("lng", locations.get(i+1).longitude);
+                pointObject.put("lat", routeLocations.get(i+1).latitude);
+                pointObject.put("lng", routeLocations.get(i+1).longitude);
                 pointArray.put(pointObject);
 
                 JSONObject legObject = new JSONObject();
@@ -673,35 +673,65 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     public void startRoute(View v) {
         if (!isLoggedIn) return;
         findViewById(R.id.btnStartRoute).setVisibility(View.GONE);
-        findViewById(R.id.btnOk).setVisibility(View.VISIBLE);
+        findViewById(R.id.btnDirect).setVisibility(View.VISIBLE);
+        findViewById(R.id.btnNormal).setVisibility(View.VISIBLE);
+        findViewById(R.id.btnCancel).setVisibility(View.VISIBLE);
         Player player = game.getPlayer(mPlayerId);
         routeLocations.add(new LatLng(player.lat, player.lng));
         isBuildingRoute = true;
     }
 
-    public void finishRoute(View v) {
+    public void cancelRoute(View v) {
+        findViewById(R.id.btnDirect).setVisibility(View.GONE);
+        findViewById(R.id.btnNormal).setVisibility(View.GONE);
+        findViewById(R.id.btnCancel).setVisibility(View.GONE);
+        findViewById(R.id.btnStartRoute).setVisibility(View.VISIBLE);
+        routeLocations.clear();
+        if (routePolyline != null)
+            routePolyline.remove();
+        isBuildingRoute = false;
+    }
+
+    public void finishDirectRoute(View v) {
+        finishRoute("direct");
+    }
+
+    public void finishNormalRoute(View v) {
+        finishRoute("normal");
+    }
+    public void finishRoute(String type) {
         if (!isBuildingRoute) return;
         if (routeLocations.size() < 2) return;
-        findViewById(R.id.btnOk).setVisibility(View.GONE);
+        findViewById(R.id.btnDirect).setVisibility(View.GONE);
+        findViewById(R.id.btnNormal).setVisibility(View.GONE);
+        findViewById(R.id.btnCancel).setVisibility(View.GONE);
         findViewById(R.id.btnStopPlayer).setVisibility(View.VISIBLE);
         if (routePolyline != null)
             routePolyline.remove();
 
-        try {
-            List<String> wayPointList = new ArrayList<String>();
-            for (int i = 1; i<routeLocations.size()-1; i++)
-                wayPointList.add(routeLocations.get(i).latitude + "," + routeLocations.get(i).longitude);
-            DirectionsResult result = DirectionsApi.newRequest(getGeoContext())
-                    .mode(TravelMode.DRIVING)
-                    .origin(new com.google.maps.model.LatLng(routeLocations.get(0).latitude, routeLocations.get(0).longitude))
-                    .destination(new com.google.maps.model.LatLng(routeLocations.get(routeLocations.size()-1).latitude, routeLocations.get(routeLocations.size()-1).longitude))
-                    //.waypoints("-18.945003995554103,-48.2798021659255|-18.93697,-48.28301")
-                    .waypoints(android.text.TextUtils.join("|", wayPointList))
-                    .await();
-            //long dist = result.routes[0].legs[0].distance.inMeters;
-            //List<LatLng> decodedPath = PolyUtil.decode(result.routes[0].overviewPolyline.getEncodedPath());
-            mSocket.emit("move", encodeRoute(routeLocations, result));
-        } catch (Exception e) { Log.e("game", Log.getStackTraceString(e)); }
+        switch (type) {
+            case "direct":
+                mSocket.emit("move", type, encodeRoute(null));
+                break;
+            case "normal":
+                try {
+                    List<String> wayPointList = new ArrayList<String>();
+                    for (int i = 1; i < routeLocations.size()-1; i++)
+                        wayPointList.add(routeLocations.get(i).latitude + "," + routeLocations.get(i).longitude);
+                    DirectionsResult result = DirectionsApi.newRequest(getGeoContext())
+                            .mode(TravelMode.DRIVING)
+                            .origin(new com.google.maps.model.LatLng(routeLocations.get(0).latitude, routeLocations.get(0).longitude))
+                            .destination(new com.google.maps.model.LatLng(routeLocations.get(routeLocations.size()-1).latitude, routeLocations.get(routeLocations.size()-1).longitude))
+                            //.waypoints("-18.945003995554103,-48.2798021659255|-18.93697,-48.28301")
+                            .waypoints(android.text.TextUtils.join("|", wayPointList))
+                            .await();
+                    mSocket.emit("move", type, encodeRoute(result));
+                    //long dist = result.routes[0].legs[0].distance.inMeters;
+                    //List<LatLng> decodedPath = PolyUtil.decode(result.routes[0].overviewPolyline.getEncodedPath());
+                } catch (Exception e) { Log.e("game", Log.getStackTraceString(e)); }
+                break;
+        }
+
         routeLocations.clear();
         isBuildingRoute = false;
     }
