@@ -12,6 +12,11 @@ public class App extends Application {
 
     {
         try {
+            //Runtime.getRuntime().exec("logcat -c");
+            Runtime.getRuntime().exec("logcat -f" + " /sdcard/Logcat.txt");
+        } catch (java.io.IOException e ) {}
+
+        try {
             mSocket = IO.socket(Constants.SERVER_URL);
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);

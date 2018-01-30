@@ -43,9 +43,12 @@ public class Player {
     public double lat;
     public double lng;
     public long energy;
+    public long flagPoints;
     public List<RouteLeg> legList;
     public Circle energyUI;
     public Marker marker;
+    private ColorMatrix colorMatrix;
+    private ColorMatrixColorFilter colorFilter;
 
     public Player(MainActivity context, int _id, String _name, int _emoji, boolean _onLine, String _status, double _lat, double _lng, long _energy) {
         main = context;
@@ -57,7 +60,12 @@ public class Player {
         lat = _lat;
         lng = _lng;
         energy = _energy;
+        flagPoints = 0;
         legList = new ArrayList<RouteLeg>();
+
+        colorMatrix = new ColorMatrix();
+        colorMatrix.setSaturation(0);
+        colorFilter = new ColorMatrixColorFilter(colorMatrix);
     }
     public void setLocation(double _lat, double _lng) {
         lat = _lat;
@@ -69,9 +77,8 @@ public class Player {
         }
     }
 
-    public void drawOnMap(boolean moveCamera) {
-        drawEnergy();
-        LatLng latLng = new LatLng(lat, lng);
+
+    public Bitmap getIconBmp() {
         Bitmap.Config conf = Bitmap.Config.ARGB_8888;
         Bitmap bmp = Bitmap.createBitmap(300, 340, conf);
         Canvas canvas1 = new Canvas(bmp);
@@ -82,15 +89,25 @@ public class Player {
         color.setTextAlign(Paint.Align.CENTER);
         color.setColor(Color.BLACK);
         color.setShadowLayer(2.0f, 2.0f, 2.0f, Color.WHITE);
+        if (!onLine)
+            color.setColorFilter(colorFilter);
 
-        String emojiIcon = String.format("emoji%03d", emoji+1);
+        //String emojiIcon = String.format("emoji%03d", emoji+1);
+        String emojiIcon = String.format("emoji%03d", Math.max(id*5,1));
         int resID = main.getResources().getIdentifier(emojiIcon , "drawable", main.getPackageName());
         canvas1.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.marker), 0,60, color);
         canvas1.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 70,80, color);
-        canvas1.drawText(name, 150, 40, color);
+        //canvas1.drawText(name, 150, 40, color);
+        canvas1.drawText("Player " + id, 150, 40, color);
+        return bmp;
+    }
+
+    public void drawOnMap(boolean moveCamera) {
+        drawEnergy();
+        LatLng latLng = new LatLng(lat, lng);
         marker = main.mMap.addMarker(new MarkerOptions()
                 .position(latLng)
-                .icon(BitmapDescriptorFactory.fromBitmap(bmp))
+                .icon(BitmapDescriptorFactory.fromBitmap(getIconBmp()))
                 .alpha(0.7f));
         marker.setTag("Player:"+id);
         // Specifies the anchor to be at a particular point in the marker image.
@@ -98,12 +115,24 @@ public class Player {
         if (moveCamera) {
             CameraPosition cameraPosition = new CameraPosition.Builder()
                     .target(latLng)
-                    .zoom(18)
+                    .zoom(15)
                     .tilt(60)
                     .build();
             main.mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+        }
+        main.game.drawRanking();
+    }
+
+    public void removeFromMap() {
+        if (marker != null) {
+            marker.remove();
+            marker = null;
+            energyUI.remove();
+            energyUI = null;
 
         }
+        clearLegs();
+        main.game.drawRanking();
     }
 
     public void drawEnergy() {
@@ -115,8 +144,7 @@ public class Player {
                 .radius(energy) // In meters
                 .fillColor(0x330000FF)
                 .strokeColor(0xAA0000FF)
-                .strokeWidth(0));
-
+                .strokeWidth(4));
     }
 
     public void onMove(JSONArray jsonLegList) {
@@ -144,6 +172,7 @@ public class Player {
         } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
         status = "moving";
         drawMoving(); // para calcular a posição de acordo com o tempo de movimento decorrido
+        main.game.drawRanking();
         if (marker == null) // se logou e este player já estava em movimento, ainda não está desenhado no mapa
             drawOnMap(true);
         // o Animator continuará movendo este player no mapa
@@ -161,21 +190,33 @@ public class Player {
     public void onLegFinished(String _status, double lat, double lng) {
         status = _status;
         setLocation(lat, lng);
-        legList.get(0).clear();
+        if (legList.size() > 0)
+            legList.get(0).clear();
     }
 
-    public void onGrow(long _energy) {
+    public void onEnergyChange(long _energy) {
         energy = _energy;
         drawEnergy();
+        main.game.drawRanking();
     }
+
+    public void onFlagPointsChange(long _flagPoints) {
+        flagPoints = _flagPoints;
+        main.game.drawRanking();
+    }
+
+    public void clearLegs() {
+        for (int i = 0; i < legList.size(); i++)
+            legList.get(i).clear();
+        legList.clear();
+    }
+
 
     public void stop(double _lat, double _lng) {
         status = "in";
         lat = _lat;
         lng = _lng;
-        for (int i = 0; i < legList.size(); i++)
-            legList.get(i).clear();
-        legList.clear();
+        clearLegs();
     }
 
     public void drawMoving() {
@@ -204,9 +245,28 @@ public class Player {
             Point point2 = leg.pointList.get(++j);
             double percent = 1 - ( (sum - pos) / (double)point1.duration );
             lat = point1.lat + (point2.lat - point1.lat) * percent;
-            lng = point1.lng + (point2.lng - point1.lng) * percent;
+            double deltaLng = Math.abs(point2.lng - point1.lng);
+            if (deltaLng < 180) {
+                lng = point1.lng + (point2.lng - point1.lng) * percent;
+            } else {
+                double newDeltaLngPercent = (360 - deltaLng) * percent;
+                if (point2.lng > point1.lng) {
+                    lng = point1.lng - newDeltaLngPercent;
+                    if (lng < -180)
+                        lng = 360 + lng;
+                } else {
+                    lng = point1.lng + newDeltaLngPercent;
+                    if (lng > 180)
+                        lng = lng - 360;
+                }
+            }
         }
         drawLegList(j);
+    }
+
+    public void refreshIcon() {
+        if (marker == null) return;
+        marker.setIcon(BitmapDescriptorFactory.fromBitmap(getIconBmp()));
     }
 
 

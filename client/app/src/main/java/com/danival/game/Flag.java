@@ -6,6 +6,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
+import android.util.Log;
 
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.Circle;
@@ -14,33 +15,38 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-// Baixar emojis de: https://emojipedia.org/
-public class Food {
+public class Flag {
     protected MainActivity main;
     public int id;
-    public int type;
+    public String city;
+    public String country;
+    public long population;
     public double lat;
     public double lng;
-    public long energy;
+    public long wall;
+    public int playerId;
     public Circle energyUI;
     public Marker marker;
 
-    public Food(MainActivity context, int _id, int _type, double _lat, double _lng, long _energy) {
+    public Flag(MainActivity context, int _id, String _city, String _country, long _population, double _lat, double _lng, long _wall, int _playerId) {
         main = context;
         id = _id;
-        type = _type;
+        city = _city;
+        country = _country;
+        population = _population;
         lat = _lat;
         lng = _lng;
-        energy = _energy;
+        wall = _wall;
+        playerId = _playerId;
     }
 
     public void drawOnMap() {
         LatLng latLng = new LatLng(lat, lng);
         energyUI = main.mMap.addCircle(new CircleOptions()
                 .center(latLng)
-                .radius(energy) // In meters
-                .fillColor(0x33008800)
-                .strokeColor(0xAA008800)
+                .radius(Math.floor(population/100000)) // In meters
+                .fillColor(0x11000000)
+                .strokeColor(0x77000000)
                 .strokeWidth(4));
 
         Bitmap.Config conf = Bitmap.Config.ARGB_8888;
@@ -51,18 +57,22 @@ public class Food {
         color.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         color.setTextSize(50);
         color.setTextAlign(Paint.Align.CENTER);
-        color.setColor(0xFF008800);
+        color.setColor(0xFF000000);
         color.setShadowLayer(2.0f, 2.0f, 2.0f, Color.WHITE);
 
         //canvas1.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.marker), 0,60, color);
-        String emojiIcon = String.format("food%02d", type+1);
+        String emojiIcon = String.format("flag%03d", id+1);
         int resID = main.getResources().getIdentifier(emojiIcon , "drawable", main.getPackageName());
         canvas1.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 0,40, color);
-        canvas1.drawText("+"+energy, 80, 40, color);
+        if (playerId >= 0)  {
+            Player player = main.game.getPlayer(playerId);
+            canvas1.drawText("[" + player.name + "]", 80, 40, color);
+        }
+
         marker = main.mMap.addMarker(new MarkerOptions()
                 .position(latLng)
                 .icon(BitmapDescriptorFactory.fromBitmap(bmp)));
-        marker.setTag("Food:"+id);
+        marker.setTag("Flag:"+id);
     }
 
     public void clear() {
@@ -73,6 +83,4 @@ public class Food {
             energyUI = null;
         }
     }
-
-
 }

@@ -7,5 +7,7 @@
     <color name="move_clock">#66000000</color>
     <color name="attack_clock">#689a14</color>
     <color name="energy">#689a14</color>
+    <color name="green">#9cc345</color>
+
 
 </resources>
