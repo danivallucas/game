@@ -134,13 +134,17 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         mSocket.on("onNewPlayer", onNewPlayer);
         mSocket.on("onNewFood", onNewFood);
         mSocket.on("onRemoveFood", onRemoveFood);
+        mSocket.on("onNewBomb", onNewBomb);
+        mSocket.on("onRemoveBomb", onRemoveBomb);
+        mSocket.on("onNewEnergyBall", onNewEnergyBall);
+        mSocket.on("onRemoveEnergyBall", onRemoveEnergyBall);
         mSocket.on("onLogin", onLogin);
         mSocket.on("onLogout", onLogout);
         mSocket.on("onSpawn", onSpawn);
         mSocket.on("onMove", onMove);
         mSocket.on("onLegFinished", onLegFinished);
         mSocket.on("onEnergyChange", onEnergyChange);
-        mSocket.on("onFlagPointsChange", onFlagPointsChange);
+        mSocket.on("onFlagCaptured", onFlagCaptured);
         mSocket.on("onStop", onStop);
         mSocket.on("onPlayerOut", onPlayerOut);
     }
@@ -160,13 +164,17 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         mSocket.off("onNewPlayer", onNewPlayer);
         mSocket.off("onNewFood", onNewFood);
         mSocket.off("onRemoveFood", onRemoveFood);
+        mSocket.off("onNewBomb", onNewBomb);
+        mSocket.off("onRemoveBomb", onRemoveBomb);
+        mSocket.off("onNewEnergyBall", onNewEnergyBall);
+        mSocket.off("onRemoveEnergyBall", onRemoveEnergyBall);
         mSocket.off("onLogin", onLogin);
         mSocket.off("onLogout", onLogout);
         mSocket.off("onSpawn", onSpawn);
         mSocket.off("onMove", onMove);
         mSocket.off("onLegFinished", onLegFinished);
         mSocket.off("onEnergyChange", onEnergyChange);
-        mSocket.off("onFlagPointsChange", onFlagPointsChange);
+        mSocket.off("onFlagCaptured", onFlagCaptured);
         mSocket.off("onStop", onStop);
         mSocket.off("onPlayerOut", onPlayerOut);
     }
@@ -367,7 +375,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         JSONArray list = (JSONArray) args[0];
                         for (int i = 0; i < list.length(); i++) {
                             JSONObject data = list.getJSONObject(i);
-                            Player player = game.newPlayer(data.getInt("id"), data.getString("name"), data.getInt("emoji"), data.getBoolean("onLine"), data.getString("status"), data.getDouble("lat"), data.getDouble("lng"), data.getLong("energy"));
+                            Player player = game.newPlayer(data.getInt("id"), data.getString("name"), data.getInt("emoji"), data.getBoolean("onLine"), data.getString("status"), data.getDouble("lat"), data.getDouble("lng"), data.getLong("energy"), data.getLong("flagPoints"));
                             // draw on map
                             if (player.status.equals("in"))
                                 player.drawOnMap(player.id == mPlayerId);
@@ -458,9 +466,75 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 public void run() {
                     try {
                         JSONObject data = (JSONObject) args[0];
-                        //Toast.makeText(getApplicationContext(), "food: " + data.getInt("id"), Toast.LENGTH_LONG).show();
                         game.removeFood(data.getInt("id"));
+                    } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
+                }
+            });
+        }
+    };
 
+    private Emitter.Listener onNewBomb = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        JSONArray list = (JSONArray) args[0];
+                        for (int i = 0; i < list.length(); i++) {
+                            JSONObject data = list.getJSONObject(i);
+                            Bomb bomb = game.newBomb(data.getInt("id"), data.getInt("type"), data.getDouble("lat"), data.getDouble("lng"), data.getLong("energy"));
+                            bomb.drawOnMap();
+                        }
+                    } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
+                }
+            });
+        }
+    };
+
+    private Emitter.Listener onRemoveBomb = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        JSONObject data = (JSONObject) args[0];
+                        game.removeBomb(data.getInt("id"));
+                    } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
+                }
+            });
+        }
+    };
+
+    private Emitter.Listener onNewEnergyBall = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        JSONArray list = (JSONArray) args[0];
+                        for (int i = 0; i < list.length(); i++) {
+                            JSONObject data = list.getJSONObject(i);
+                            EnergyBall energyBall = game.newEnergyBall(data.getInt("id"), data.getInt("type"), data.getDouble("lat"), data.getDouble("lng"), data.getLong("energy"));
+                            energyBall.drawOnMap();
+                        }
+                    } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
+                }
+            });
+        }
+    };
+
+    private Emitter.Listener onRemoveEnergyBall = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        JSONObject data = (JSONObject) args[0];
+                        game.removeEnergyBall(data.getInt("id"));
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
                 }
             });
@@ -527,7 +601,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         }
     };
 
-    private Emitter.Listener onFlagPointsChange = new Emitter.Listener() {
+    private Emitter.Listener onFlagCaptured = new Emitter.Listener() {
         @Override
         public void call(final Object... args) {
             runOnUiThread(new Runnable() {
@@ -535,9 +609,12 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 public void run() {
                     try {
                         JSONObject data = (JSONObject) args[0];
-                        int id = data.getInt("id");
-                        Player player = game.getPlayer(id);
+                        int playerId = data.getInt("playerId");
+                        Player player = game.getPlayer(playerId);
                         player.onFlagPointsChange(data.getLong("flagPoints"));
+                        int flagId = data.getInt("flagId");
+                        Flag flag = game.getFlag(flagId);
+                        flag.onFlagCaptured(playerId);
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
                 }
             });

@@ -50,7 +50,7 @@ public class Player {
     private ColorMatrix colorMatrix;
     private ColorMatrixColorFilter colorFilter;
 
-    public Player(MainActivity context, int _id, String _name, int _emoji, boolean _onLine, String _status, double _lat, double _lng, long _energy) {
+    public Player(MainActivity context, int _id, String _name, int _emoji, boolean _onLine, String _status, double _lat, double _lng, long _energy, long _flagPoints) {
         main = context;
         id = _id;
         name = _name;
@@ -60,7 +60,7 @@ public class Player {
         lat = _lat;
         lng = _lng;
         energy = _energy;
-        flagPoints = 0;
+        flagPoints = _flagPoints;
         legList = new ArrayList<RouteLeg>();
 
         colorMatrix = new ColorMatrix();

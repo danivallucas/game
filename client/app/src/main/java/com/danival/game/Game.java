@@ -21,12 +21,16 @@ public class Game {
     protected MainActivity main;
     public List<Player> playerList;
     public List<Food> foodList;
+    public List<Bomb> bombList;
+    public List<EnergyBall> energyBallList;
     public List<Flag> flagList;
 
     public Game(MainActivity context) {
         main = context;
         playerList = new ArrayList<Player>();
         foodList = new ArrayList<Food>();
+        bombList = new ArrayList<Bomb>();
+        energyBallList = new ArrayList<EnergyBall>();
         flagList = new ArrayList<Flag>();
     }
 
@@ -45,8 +49,8 @@ public class Game {
     }
 
 
-    public Player newPlayer(int id, String name, int emoji, boolean onLine, String status, double lat, double lng, long energy) {
-        Player player = new Player(main, id, name, emoji, onLine, status, lat, lng, energy);
+    public Player newPlayer(int id, String name, int emoji, boolean onLine, String status, double lat, double lng, long energy, long flagPoints) {
+        Player player = new Player(main, id, name, emoji, onLine, status, lat, lng, energy, flagPoints);
         playerList.add(player);
         return player;
     }
@@ -81,6 +85,58 @@ public class Game {
         foodList.remove(findFoodIndex(id));
     }
 
+    // *** Bomb ***
+
+    public int findBombIndex(int id) {
+        for (int i = 0; i < bombList.size(); i++) {
+            if (bombList.get(i).id == id)
+                return i;
+        }
+        return -1;
+    }
+
+    public Bomb getBomb(int id) {
+        return bombList.get(findBombIndex(id));
+    }
+
+
+    public Bomb newBomb(int id, int type, double lat, double lng, long energy) {
+        Bomb bomb = new Bomb(main, id, type, lat, lng, energy);
+        bombList.add(bomb);
+        return bomb;
+    }
+
+    public void removeBomb(int id) {
+        getBomb(id).clear();
+        bombList.remove(findBombIndex(id));
+    }
+
+    // *** EnergyBall ***
+
+    public int findEnergyBallIndex(int id) {
+        for (int i = 0; i < energyBallList.size(); i++) {
+            if (energyBallList.get(i).id == id)
+                return i;
+        }
+        return -1;
+    }
+
+    public EnergyBall getEnergyBall(int id) {
+        return energyBallList.get(findEnergyBallIndex(id));
+    }
+
+
+    public EnergyBall newEnergyBall(int id, int type, double lat, double lng, long energy) {
+        EnergyBall energyBall = new EnergyBall(main, id, type, lat, lng, energy);
+        energyBallList.add(energyBall);
+        return energyBall;
+    }
+
+    public void removeEnergyBall(int id) {
+        getEnergyBall(id).clear();
+        energyBallList.remove(findEnergyBallIndex(id));
+    }
+
     // *** Flag ***
 
     public int findFlagIndex(int id) {
@@ -112,6 +168,8 @@ public class Game {
     public void clear() {
         playerList.clear();
         foodList.clear();
+        bombList.clear();
+        energyBallList.clear();
         flagList.clear();
     }
 
@@ -130,7 +188,7 @@ public class Game {
             if (!playerList.get(i).status.equals("out")) {
                 if (!sb.toString().equals(""))
                     sb.append("\n");
-                sb.append("Player " + playerList.get(i).id + ": " + (playerList.get(i).energy + playerList.get(i).flagPoints));
+                sb.append("Player " + playerList.get(i).id + ": " + playerList.get(i).energy + " + " + playerList.get(i).flagPoints);
             }
 
         }
