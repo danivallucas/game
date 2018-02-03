@@ -46,6 +46,8 @@ public class Player {
     public long flagPoints;
     public List<RouteLeg> legList;
     public Circle energyUI;
+    public Circle bombLimitUI;
+    public Circle directLimitUI;
     public Marker marker;
     private ColorMatrix colorMatrix;
     private ColorMatrixColorFilter colorFilter;
@@ -127,9 +129,18 @@ public class Player {
         if (marker != null) {
             marker.remove();
             marker = null;
+        }
+        if (energyUI != null) {
             energyUI.remove();
             energyUI = null;
-
+        }
+        if (bombLimitUI != null) {
+            bombLimitUI.remove();
+            bombLimitUI = null;
+        }
+        if (directLimitUI != null) {
+            directLimitUI.remove();
+            directLimitUI = null;
         }
         clearLegs();
         main.game.drawRanking();
@@ -145,6 +156,44 @@ public class Player {
                 .fillColor(0x330000FF)
                 .strokeColor(0xAA0000FF)
                 .strokeWidth(4));
+    }
+
+    public void drawBombLimit() {
+        LatLng latLng = new LatLng(lat, lng);
+        if (bombLimitUI != null)
+            bombLimitUI.remove();
+        bombLimitUI = main.mMap.addCircle(new CircleOptions()
+                .center(latLng)
+                .radius((energy - main.BOMB_UNIT_COST - main.START_ENERGY) * main.BOMB_MAX_DIST) // In meters
+                .strokeColor(0xFFAAAAAA)
+                .strokeWidth(4));
+    }
+
+    public void clearBombLimit() {
+        if (bombLimitUI != null) {
+            bombLimitUI.remove();
+            bombLimitUI = null;
+        }
+    }
+
+    public void drawDirectLimit(LatLng latLng, int legCount, int totalRouteDistance) {
+        if (directLimitUI != null)
+            directLimitUI.remove();
+        long energyToGo = energy - (legCount * main.DIRECT_UNIT_COST) - main.START_ENERGY;
+        long maxDist = energyToGo * main.DIRECT_MAX_DIST;
+        maxDist -= totalRouteDistance;
+        directLimitUI = main.mMap.addCircle(new CircleOptions()
+                .center(latLng)
+                .radius(maxDist) // In meters
+                .strokeColor(0xFFAAAAAA)
+                .strokeWidth(4));
+    }
+
+    public void clearDirectLimit() {
+        if (directLimitUI != null) {
+            directLimitUI.remove();
+            directLimitUI = null;
+        }
     }
 
     public void onMove(JSONArray jsonLegList) {

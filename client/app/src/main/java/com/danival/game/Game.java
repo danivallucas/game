@@ -171,6 +171,7 @@ public class Game {
         bombList.clear();
         energyBallList.clear();
         flagList.clear();
+        main.mMap.clear();
     }
 
     public void drawRanking() {
@@ -188,11 +189,18 @@ public class Game {
             if (!playerList.get(i).status.equals("out")) {
                 if (!sb.toString().equals(""))
                     sb.append("\n");
-                sb.append("Player " + playerList.get(i).id + ": " + playerList.get(i).energy + " + " + playerList.get(i).flagPoints);
+                sb.append("Player " + playerList.get(i).id + ": " + playerList.get(i).energy);
+                if (playerList.get(i).flagPoints > 0)
+                    sb.append(" + " + playerList.get(i).flagPoints);
             }
 
         }
-        main.status.setText(sb);
+        if (sb.toString().equals("")) {
+            main.ranking.setVisibility(View.GONE);
+        } else {
+            main.ranking.setText(sb);
+            main.ranking.setVisibility(View.VISIBLE);
+        }
     }
 
 }
