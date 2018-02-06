@@ -49,7 +49,7 @@ public class Game {
     }
 
 
-    public Player newPlayer(int id, String name, int emoji, boolean onLine, String status, double lat, double lng, long energy, long flagPoints) {
+    public Player newPlayer(int id, String name, int emoji, boolean onLine, String status, double lat, double lng, int energy, double flagPoints) {
         Player player = new Player(main, id, name, emoji, onLine, status, lat, lng, energy, flagPoints);
         playerList.add(player);
         return player;
@@ -74,7 +74,7 @@ public class Game {
     }
 
 
-    public Food newFood(int id, int type, double lat, double lng, long energy) {
+    public Food newFood(int id, int type, double lat, double lng, int energy) {
         Food food = new Food(main, id, type, lat, lng, energy);
         foodList.add(food);
         return food;
@@ -100,7 +100,7 @@ public class Game {
     }
 
 
-    public Bomb newBomb(int id, int type, double lat, double lng, long energy) {
+    public Bomb newBomb(int id, int type, double lat, double lng, int energy) {
         Bomb bomb = new Bomb(main, id, type, lat, lng, energy);
         bombList.add(bomb);
         return bomb;
@@ -126,7 +126,7 @@ public class Game {
     }
 
 
-    public EnergyBall newEnergyBall(int id, int type, double lat, double lng, long energy) {
+    public EnergyBall newEnergyBall(int id, int type, double lat, double lng, int energy) {
         EnergyBall energyBall = new EnergyBall(main, id, type, lat, lng, energy);
         energyBallList.add(energyBall);
         return energyBall;
@@ -152,8 +152,8 @@ public class Game {
     }
 
 
-    public Flag newFlag(int id, String city, String country, long population, double lat, double lng, long wall, int playerId) {
-        Flag flag = new Flag(main, id, city, country, population, lat, lng, wall, playerId);
+    public Flag newFlag(int id, String type, double lat, double lng, int energy, int wall, int playerId, double points) {
+        Flag flag = new Flag(main, id, type, lat, lng, energy, wall, playerId, points);
         flagList.add(flag);
         return flag;
     }
@@ -178,20 +178,31 @@ public class Game {
         Collections.sort(playerList, new Comparator<Player>() {
             @Override
             public int compare(Player player1, Player player2) {
-                if ( (player1.energy + player1.flagPoints) > (player2.energy + player2.flagPoints) )
+                if ( player1.flagPoints > player2.flagPoints ) {
                     return  -1;
-                return 1;
+                } else
+                if ( player1.flagPoints < player2.flagPoints ) {
+                    return  1;
+                } else {
+                    if ( player1.energy > player2.energy) {
+                        return  -1;
+                    } else {
+                        return 1;
+                    }
+                }
+
             }
         });
         // Atualiza o ranking
         StringBuilder sb = new StringBuilder();
+        int count = 0;
         for (int i = 0; i < playerList.size(); i++) {
             if (!playerList.get(i).status.equals("out")) {
                 if (!sb.toString().equals(""))
                     sb.append("\n");
-                sb.append("Player " + playerList.get(i).id + ": " + playerList.get(i).energy);
+                sb.append(++count + ". Player" + playerList.get(i).id + " (" + playerList.get(i).energy + ")");
                 if (playerList.get(i).flagPoints > 0)
-                    sb.append(" + " + playerList.get(i).flagPoints);
+                    sb.append(": " + (int)Math.ceil(playerList.get(i).flagPoints));
             }
 
         }

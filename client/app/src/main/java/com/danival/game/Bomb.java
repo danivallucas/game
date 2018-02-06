@@ -20,11 +20,11 @@ public class Bomb {
     public int type;
     public double lat;
     public double lng;
-    public long energy;
+    public int energy;
     public Circle energyUI;
     public Marker marker;
 
-    public Bomb(MainActivity context, int _id, int _type, double _lat, double _lng, long _energy) {
+    public Bomb(MainActivity context, int _id, int _type, double _lat, double _lng, int _energy) {
         main = context;
         id = _id;
         type = _type;

@@ -42,8 +42,8 @@ public class Player {
     public String status;
     public double lat;
     public double lng;
-    public long energy;
-    public long flagPoints;
+    public int energy;
+    public double flagPoints;
     public List<RouteLeg> legList;
     public Circle energyUI;
     public Circle bombLimitUI;
@@ -52,7 +52,7 @@ public class Player {
     private ColorMatrix colorMatrix;
     private ColorMatrixColorFilter colorFilter;
 
-    public Player(MainActivity context, int _id, String _name, int _emoji, boolean _onLine, String _status, double _lat, double _lng, long _energy, long _flagPoints) {
+    public Player(MainActivity context, int _id, String _name, int _emoji, boolean _onLine, String _status, double _lat, double _lng, int _energy, double _flagPoints) {
         main = context;
         id = _id;
         name = _name;
@@ -243,13 +243,13 @@ public class Player {
             legList.get(0).clear();
     }
 
-    public void onEnergyChange(long _energy) {
+    public void onEnergyChange(int _energy) {
         energy = _energy;
         drawEnergy();
         main.game.drawRanking();
     }
 
-    public void onFlagPointsChange(long _flagPoints) {
+    public void onFlagPointsChange(double _flagPoints) {
         flagPoints = _flagPoints;
         main.game.drawRanking();
     }

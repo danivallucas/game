@@ -86,6 +86,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private String mPlayerName;
     private int mEmoji;
     private String mPlayerToken;
+    private Circle spawnLimitUI;
     public int DIRECT_UNIT_COST;
     public int START_ENERGY;
     public int WAIT_AFTER_LEG;
@@ -94,6 +95,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     public int BOMB_UNIT_COST;
     public int DRIVING_MAX_DIST;
     public int DIRECT_MAX_DIST;
+    public int SPAWN_AREA;
     public Socket mSocket;
     private boolean isConnected = false;
     private boolean isLoggedIn = false;
@@ -337,6 +339,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                                 BOMB_UNIT_COST =  conf.getInt("BOMB_UNIT_COST");
                                 DRIVING_MAX_DIST = conf.getInt("DRIVING_MAX_DIST");
                                 DIRECT_MAX_DIST = conf.getInt("DIRECT_MAX_DIST");
+                                SPAWN_AREA = conf.getInt("SPAWN_AREA");
                                 isLoggedIn = true;
                                 if (playerStatus.equals("in")) {
                                     findViewById(R.id.btnStopPlayer).setVisibility(View.GONE);
@@ -382,7 +385,11 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         JSONArray list = (JSONArray) args[0];
                         for (int i = 0; i < list.length(); i++) {
                             JSONObject data = list.getJSONObject(i);
-                            Flag flag = game.newFlag(data.getInt("id"), data.getString("city"), data.getString("country"), data.getLong("population"), data.getDouble("lat"), data.getDouble("lng"), data.getLong("wall"), data.getInt("playerId"));
+                            Log.e("game", "id: " + data.getString("id") + " wall: " + data.getString("wall") + " playerId: " + data.getString("playerId") + " ");
+                            int id = data.getInt("id");
+                            int wall = data.getInt("wall");
+                            int playerId = data.getInt("playerId");
+                            Flag flag = game.newFlag(data.getInt("id"), data.getString("type"), data.getDouble("lat"), data.getDouble("lng"), data.getInt("energy"), data.getInt("wall"), data.getInt("playerId"), data.getDouble("points"));
                             flag.drawOnMap();
                         }
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
@@ -401,7 +408,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         JSONArray list = (JSONArray) args[0];
                         for (int i = 0; i < list.length(); i++) {
                             JSONObject data = list.getJSONObject(i);
-                            Player player = game.newPlayer(data.getInt("id"), data.getString("name"), data.getInt("emoji"), data.getBoolean("onLine"), data.getString("status"), data.getDouble("lat"), data.getDouble("lng"), data.getLong("energy"), data.getLong("flagPoints"));
+                            Player player = game.newPlayer(data.getInt("id"), data.getString("name"), data.getInt("emoji"), data.getBoolean("onLine"), data.getString("status"), data.getDouble("lat"), data.getDouble("lng"), data.getInt("energy"), data.getDouble("flagPoints"));
                             // draw on map
                             if (player.status.equals("in"))
                                 player.drawOnMap(player.id == mPlayerId);
@@ -440,7 +447,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         int id = data.getInt("id");
                         Player player = game.getPlayer(id);
                         player.status = data.getString("status");
-                        player.energy = data.getLong("energy");
+                        player.energy = data.getInt("energy");
                         player.setLocation(data.getDouble("lat"), data.getDouble("lng"));
                         player.drawOnMap((id == mPlayerId));
                         //player.drawArea(data.getDouble("lat1"), data.getDouble("lng1"), data.getDouble("lat2"), data.getDouble("lng2"));
@@ -468,7 +475,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         JSONArray list = (JSONArray) args[0];
                         for (int i = 0; i < list.length(); i++) {
                             JSONObject data = list.getJSONObject(i);
-                            Food food = game.newFood(data.getInt("id"), data.getInt("type"), data.getDouble("lat"), data.getDouble("lng"), data.getLong("energy"));
+                            Food food = game.newFood(data.getInt("id"), data.getInt("type"), data.getDouble("lat"), data.getDouble("lng"), data.getInt("energy"));
                             food.drawOnMap();
                         }
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
@@ -503,7 +510,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         JSONArray list = (JSONArray) args[0];
                         for (int i = 0; i < list.length(); i++) {
                             JSONObject data = list.getJSONObject(i);
-                            Bomb bomb = game.newBomb(data.getInt("id"), data.getInt("type"), data.getDouble("lat"), data.getDouble("lng"), data.getLong("energy"));
+                            Bomb bomb = game.newBomb(data.getInt("id"), data.getInt("type"), data.getDouble("lat"), data.getDouble("lng"), data.getInt("energy"));
                             bomb.drawOnMap();
                         }
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
@@ -537,7 +544,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         JSONArray list = (JSONArray) args[0];
                         for (int i = 0; i < list.length(); i++) {
                             JSONObject data = list.getJSONObject(i);
-                            EnergyBall energyBall = game.newEnergyBall(data.getInt("id"), data.getInt("type"), data.getDouble("lat"), data.getDouble("lng"), data.getLong("energy"));
+                            EnergyBall energyBall = game.newEnergyBall(data.getInt("id"), data.getInt("type"), data.getDouble("lat"), data.getDouble("lng"), data.getInt("energy"));
                             energyBall.drawOnMap();
                         }
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
@@ -616,7 +623,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         JSONObject data = (JSONObject) args[0];
                         int id = data.getInt("id");
                         Player player = game.getPlayer(id);
-                        player.onEnergyChange(data.getLong("energy"));
+                        player.onEnergyChange(data.getInt("energy"));
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
                 }
             });
@@ -633,7 +640,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         JSONObject data = (JSONObject) args[0];
                         int playerId = data.getInt("playerId");
                         Player player = game.getPlayer(playerId);
-                        player.onFlagPointsChange(data.getLong("flagPoints"));
+                        player.onFlagPointsChange(data.getDouble("flagPoints"));
                         int flagId = data.getInt("flagId");
                         Flag flag = game.getFlag(flagId);
                         flag.onFlagCaptured(playerId);
@@ -727,6 +734,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                     public void onSuccess(Location location) {
                         if (location != null) {
                             mLatLng = new LatLng(location.getLatitude(), location.getLongitude());
+
                             enterGame();
                         }
                     }
@@ -734,6 +742,23 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
+    public void drawSpawnLimit() {
+        if (spawnLimitUI != null)
+            spawnLimitUI.remove();
+        spawnLimitUI = mMap.addCircle(new CircleOptions()
+                .center(mLatLng)
+                .radius(SPAWN_AREA) // In meters
+                .fillColor(0x11000000)
+                .strokeColor(0xFF333333)
+                .strokeWidth(4));
+    }
+
+    public void clearSpawnLimit() {
+        if (spawnLimitUI != null) {
+            spawnLimitUI.remove();
+            spawnLimitUI = null;
+        }
+    }
     private void goSpawnState() {
         findViewById(R.id.btnStartRoute).setVisibility(View.GONE);
         findViewById(R.id.btnThrowBomb).setVisibility(View.GONE);
@@ -744,12 +769,25 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 .tilt(60)
                 .build();
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+        drawSpawnLimit();
         userState = "spawning";
         msg.setText("Clique no mapa para iniciar.");
         msg.setVisibility(View.VISIBLE);
         ranking.setVisibility(View.GONE);
     }
 
+    public void finishSpawn(LatLng latLng) {
+        double dist = SphericalUtil.computeDistanceBetween(new LatLng(mLatLng.latitude, mLatLng.longitude), latLng);
+        if ( dist > SPAWN_AREA ) {
+            Toast.makeText(getApplicationContext(), "Erro: Distância maior que a permitida.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        mSocket.emit("spawn", latLng.latitude, latLng.longitude);
+        clearSpawnLimit();
+        msg.setVisibility(View.GONE);
+        ranking.setVisibility(View.VISIBLE);
+        userState = "";
+    }
 
     @Override
     public void onCameraMove() {
@@ -823,8 +861,8 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         Player player = game.getPlayer(mPlayerId);
         player.marker.setVisible(false);
         int totalRouteDistance = getTotalRouteDistance();
-        long energyToGo = player.energy - (routeLocations.size() * DIRECT_UNIT_COST) - START_ENERGY;
-        long maxDist = energyToGo * DIRECT_MAX_DIST;
+        int energyToGo = player.energy - (routeLocations.size() * DIRECT_UNIT_COST) - START_ENERGY;
+        int maxDist = energyToGo * DIRECT_MAX_DIST;
         Log.e("game", "e: " + player.energy + " tRD: " + totalRouteDistance + " u: " + (routeLocations.size() * DIRECT_UNIT_COST) + " eTG: " + energyToGo + " mD: " + maxDist);
         maxDist -= totalRouteDistance;
         Log.e("game", "mD: " + maxDist);
@@ -851,8 +889,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         Log.e("game", "onMapClick");
         switch (userState) {
             case "spawning":
-                msg.setVisibility(View.GONE);
-                mSocket.emit("spawn", latLng.latitude, latLng.longitude);
+                finishSpawn(latLng);
                 break;
             case "buildingRoute":
                 addRouteLocation(latLng);
@@ -899,10 +936,8 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             addRouteLocation(latLng);
         if (userState.equals("throwingBomb"))
             finishThrowBomb(latLng);
-        if (userState.equals("spawning")) {
-            msg.setVisibility(View.GONE);
-            mSocket.emit("spawn", latLng.latitude, latLng.longitude);
-        }
+        if (userState.equals("spawning"))
+            finishSpawn(latLng);
         return true; // Event consumed! This avoid default behavior (info window, etc)
     }
 
@@ -981,8 +1016,8 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         switch (type) {
             case "direct":
                 int totalRouteDistance = getTotalRouteDistance();
-                long energyToGo = player.energy - ((routeLocations.size()-1) * DIRECT_UNIT_COST) - START_ENERGY;
-                long maxDist = energyToGo * DIRECT_MAX_DIST;
+                int energyToGo = player.energy - ((routeLocations.size()-1) * DIRECT_UNIT_COST) - START_ENERGY;
+                int maxDist = energyToGo * DIRECT_MAX_DIST;
                 Log.e("game", "e: " + player.energy + " tRD: " + totalRouteDistance + " u: " + (routeLocations.size() * DIRECT_UNIT_COST) + " eTG: " + energyToGo + " mD: " + maxDist);
                 if ( totalRouteDistance <= maxDist ) {
                     mSocket.emit("move", type, encodeRoute(null), routeLocations.size()-1, totalRouteDistance);
@@ -1076,7 +1111,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
     public void finishThrowBomb(LatLng latLng) {
         Player player = game.getPlayer(mPlayerId);
-        long maxDist = (player.energy - BOMB_UNIT_COST - START_ENERGY) * BOMB_MAX_DIST;
+        int maxDist = (player.energy - BOMB_UNIT_COST - START_ENERGY) * BOMB_MAX_DIST;
         double dist = SphericalUtil.computeDistanceBetween(new LatLng(player.lat, player.lng), latLng);
         if ( dist <= maxDist ) {
             mSocket.emit("throwBomb", latLng.latitude, latLng.longitude);
