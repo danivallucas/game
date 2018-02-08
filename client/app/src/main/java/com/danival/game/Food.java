@@ -10,6 +10,8 @@ import android.graphics.Typeface;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
+import com.google.android.gms.maps.model.GroundOverlay;
+import com.google.android.gms.maps.model.GroundOverlayOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -24,6 +26,7 @@ public class Food {
     public int energy;
     public Circle energyUI;
     public Marker marker;
+    public GroundOverlay label;
 
     public Food(MainActivity context, int _id, int _type, double _lat, double _lng, int _energy) {
         main = context;
@@ -34,31 +37,46 @@ public class Food {
         energy = _energy;
     }
 
-    public void drawOnMap() {
+    public void drawEnergy() {
         LatLng latLng = new LatLng(lat, lng);
+        if (energyUI != null)
+            energyUI.remove();
         energyUI = main.mMap.addCircle(new CircleOptions()
                 .center(latLng)
                 .radius(energy) // In meters
-                .fillColor(0x33008800)
-                .strokeColor(0xAA008800)
-                .strokeWidth(4));
+                .fillColor(0x33FF0000)
+                .strokeColor(0xAAFF0000)
+                .strokeWidth(12));
+    }
 
-        Bitmap.Config conf = Bitmap.Config.ARGB_8888;
-        Bitmap bmp = Bitmap.createBitmap(160, 200, conf);
-        Canvas canvas1 = new Canvas(bmp);
-
+    public void drawLabel() {
+        LatLng latLng = new LatLng(lat, lng);
+        if (label != null)
+            label.remove();
+        Bitmap bmpLabel = Bitmap.createBitmap(160, 160, Bitmap.Config.ARGB_8888);
+        Canvas canvasLabel = new Canvas(bmpLabel);
         Paint color = new Paint();
         color.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        color.setTextSize(50);
+        color.setTextSize(40);
         color.setTextAlign(Paint.Align.CENTER);
-        color.setColor(0xFF008800);
-        color.setShadowLayer(2.0f, 2.0f, 2.0f, Color.WHITE);
+        color.setColor(0x77550000);
+        color.setShadowLayer(0.5f, 1.0f, 1.0f, Color.WHITE);
+        canvasLabel.drawText("+" + energy, 80, 120, color);
+        label = main.mMap.addGroundOverlay(new GroundOverlayOptions()
+                .image(BitmapDescriptorFactory.fromBitmap(bmpLabel))
+                .position(latLng, (float)energy*2, (float)energy*2));
+    }
 
-        //canvas1.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.marker), 0,60, color);
+    public void drawOnMap() {
+        drawEnergy();
+        drawLabel();
+        LatLng latLng = new LatLng(lat, lng);
+
+        Bitmap bmp = Bitmap.createBitmap(160, 160, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bmp);
         String emojiIcon = String.format("food%02d", type+1);
         int resID = main.getResources().getIdentifier(emojiIcon , "drawable", main.getPackageName());
-        canvas1.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 0,40, color);
-        canvas1.drawText("+"+energy, 80, 40, color);
+        canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 0,0, new Paint());
         marker = main.mMap.addMarker(new MarkerOptions()
                 .position(latLng)
                 .icon(BitmapDescriptorFactory.fromBitmap(bmp)));
@@ -71,6 +89,8 @@ public class Food {
             marker = null;
             energyUI.remove();
             energyUI = null;
+            label.remove();
+            label = null;
         }
     }
 

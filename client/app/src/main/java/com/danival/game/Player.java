@@ -20,6 +20,8 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
+import com.google.android.gms.maps.model.GroundOverlay;
+import com.google.android.gms.maps.model.GroundOverlayOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -49,6 +51,7 @@ public class Player {
     public Circle bombLimitUI;
     public Circle directLimitUI;
     public Marker marker;
+    public GroundOverlay label;
     private ColorMatrix colorMatrix;
     private ColorMatrixColorFilter colorFilter;
 
@@ -76,15 +79,14 @@ public class Player {
         if (marker != null) {
             marker.setPosition(latLng);
             drawEnergy();
+            drawLabel();
         }
     }
 
 
     public Bitmap getIconBmp() {
-        Bitmap.Config conf = Bitmap.Config.ARGB_8888;
-        Bitmap bmp = Bitmap.createBitmap(300, 340, conf);
-        Canvas canvas1 = new Canvas(bmp);
-
+        Bitmap bmp = Bitmap.createBitmap(300, 340, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bmp);
         Paint color = new Paint();
         color.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         color.setTextSize(50);
@@ -97,27 +99,27 @@ public class Player {
         //String emojiIcon = String.format("emoji%03d", emoji+1);
         String emojiIcon = String.format("emoji%03d", Math.max(id*5,1));
         int resID = main.getResources().getIdentifier(emojiIcon , "drawable", main.getPackageName());
-        canvas1.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.marker), 0,60, color);
-        canvas1.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 70,80, color);
+        canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.marker), 0,60, color);
+        canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 70,80, color);
         //canvas1.drawText(name, 150, 40, color);
-        canvas1.drawText("Player " + id, 150, 40, color);
+        canvas.drawText("Player " + id, 150, 40, color);
         return bmp;
     }
 
     public void drawOnMap(boolean moveCamera) {
         drawEnergy();
+        drawLabel();
         LatLng latLng = new LatLng(lat, lng);
         marker = main.mMap.addMarker(new MarkerOptions()
                 .position(latLng)
                 .icon(BitmapDescriptorFactory.fromBitmap(getIconBmp()))
                 .alpha(0.7f));
         marker.setTag("Player:"+id);
-        // Specifies the anchor to be at a particular point in the marker image.
-        //.anchor(0.5f, 1));
+
         if (moveCamera) {
             CameraPosition cameraPosition = new CameraPosition.Builder()
                     .target(latLng)
-                    .zoom(15)
+                    .zoom(19)
                     .tilt(60)
                     .build();
             main.mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
@@ -142,6 +144,10 @@ public class Player {
             directLimitUI.remove();
             directLimitUI = null;
         }
+        if (label != null) {
+            label.remove();
+            label = null;
+        }
         clearLegs();
         main.game.drawRanking();
     }
@@ -156,6 +162,29 @@ public class Player {
                 .fillColor(0x330000FF)
                 .strokeColor(0xAA0000FF)
                 .strokeWidth(4));
+    }
+
+    public void drawLabel() {
+        LatLng latLng = new LatLng(lat, lng);
+        if (label != null)
+            label.remove();
+        Bitmap bmpLabel = Bitmap.createBitmap(160, 160, Bitmap.Config.ARGB_8888);
+        Canvas canvasLabel = new Canvas(bmpLabel);
+        Paint color = new Paint();
+        color.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        color.setTextSize(50);
+        color.setTextAlign(Paint.Align.CENTER);
+        color.setColor(0x77000055);
+        color.setShadowLayer(0.5f, 1.0f, 1.0f, Color.WHITE);
+        if (flagPoints > 0) {
+            canvasLabel.drawText("+" + main.format.format(energy), 80, 100, color);
+            canvasLabel.drawText("$" + main.format.format(Math.ceil(flagPoints)), 80, 140, color);
+        } else {
+            canvasLabel.drawText("+" + main.format.format(energy), 80, 120, color);
+        }
+        label = main.mMap.addGroundOverlay(new GroundOverlayOptions()
+                .image(BitmapDescriptorFactory.fromBitmap(bmpLabel))
+                .position(latLng, (float)energy*2, (float)energy*2));
     }
 
     public void drawBombLimit() {
@@ -179,9 +208,11 @@ public class Player {
     public void drawDirectLimit(LatLng latLng, int legCount, int totalRouteDistance) {
         if (directLimitUI != null)
             directLimitUI.remove();
+        Log.e("game", "drawDirectLimit");
         long energyToGo = energy - (legCount * main.DIRECT_UNIT_COST) - main.START_ENERGY;
         long maxDist = energyToGo * main.DIRECT_MAX_DIST;
         maxDist -= totalRouteDistance;
+        Log.e("game", "drawDirectLimit - maxDist: " + maxDist);
         directLimitUI = main.mMap.addCircle(new CircleOptions()
                 .center(latLng)
                 .radius(maxDist) // In meters
@@ -246,11 +277,13 @@ public class Player {
     public void onEnergyChange(int _energy) {
         energy = _energy;
         drawEnergy();
+        drawLabel();
         main.game.drawRanking();
     }
 
     public void onFlagPointsChange(double _flagPoints) {
         flagPoints = _flagPoints;
+        drawLabel();
         main.game.drawRanking();
     }
 
@@ -270,8 +303,9 @@ public class Player {
 
     public void drawMoving() {
         if (!status.equals("moving")) return;
-        long now = System.currentTimeMillis();
+        if (legList.size() == 0) return; // Qdo loga, recebe os players e o Animator tenta já desenhar os que estão "moving". Só passar daqui se esse player já recebeu suas legs.
         RouteLeg leg = legList.get(0);
+        long now = System.currentTimeMillis();
         if (now > leg.endTime) {
             status = "in";
             Point lastPoint = leg.pointList.get(leg.pointList.size()-1);

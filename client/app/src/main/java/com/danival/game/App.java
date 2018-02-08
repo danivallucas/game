@@ -28,5 +28,15 @@ public class App extends Application {
     }
 
     public int getTag() { return tag; }
+
     public void setTag(int _tag) { tag = _tag; }
+
+    public double metersToLat(double lat, double lng, int meters) {
+        return (meters / 6378100f) * (180 / Math.PI);
+    }
+
+    public double metersToLng(double lat, double lng, int meters) {
+        return (meters / 6378100f) * (180 / Math.PI) / Math.cos(lat * Math.PI/180);
+    }
+
 }

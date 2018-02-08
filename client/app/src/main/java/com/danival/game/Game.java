@@ -202,7 +202,7 @@ public class Game {
                     sb.append("\n");
                 sb.append(++count + ". Player" + playerList.get(i).id + " (" + playerList.get(i).energy + ")");
                 if (playerList.get(i).flagPoints > 0)
-                    sb.append(": " + (int)Math.ceil(playerList.get(i).flagPoints));
+                    sb.append(": " + main.format.format(Math.ceil(playerList.get(i).flagPoints)));
             }
 
         }

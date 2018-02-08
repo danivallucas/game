@@ -40,6 +40,7 @@ import com.google.android.gms.maps.model.Dot;
 import com.google.android.gms.maps.model.Gap;
 import com.google.android.gms.maps.model.JointType;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -63,6 +64,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -79,6 +82,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private FusedLocationProviderClient mFusedLocationClient;
     private ColorMatrix colorMatrix;
     private ColorMatrixColorFilter colorFilter;
+    public DecimalFormat format;
     private SharedPreferences sharedPref; // arq configurações
     protected Metrics metrics;
     private static final int REQUEST_LOGIN = 0;
@@ -117,6 +121,9 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         colorMatrix = new ColorMatrix();
         colorMatrix.setSaturation(0);
         colorFilter = new ColorMatrixColorFilter(colorMatrix);
+        DecimalFormatSymbols symbols = new DecimalFormatSymbols();
+        symbols.setGroupingSeparator(' ');
+        format = new DecimalFormat("#,###", symbols);
         sharedPref = getPreferences(Context.MODE_PRIVATE);
         mPlayerName = "";
         game = new Game(this);
@@ -385,10 +392,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         JSONArray list = (JSONArray) args[0];
                         for (int i = 0; i < list.length(); i++) {
                             JSONObject data = list.getJSONObject(i);
-                            Log.e("game", "id: " + data.getString("id") + " wall: " + data.getString("wall") + " playerId: " + data.getString("playerId") + " ");
-                            int id = data.getInt("id");
-                            int wall = data.getInt("wall");
-                            int playerId = data.getInt("playerId");
+                            Log.e("game", "id: " + data.getString("id") + " type: " + data.getString("type") + " points: " + data.getString("points") + " ");
                             Flag flag = game.newFlag(data.getInt("id"), data.getString("type"), data.getDouble("lat"), data.getDouble("lng"), data.getInt("energy"), data.getInt("wall"), data.getInt("playerId"), data.getDouble("points"));
                             flag.drawOnMap();
                         }
@@ -765,13 +769,21 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mLatLng, 10f));
         CameraPosition cameraPosition = new CameraPosition.Builder()
                 .target(mLatLng)
-                .zoom(15)
+                .zoom(13)
                 .tilt(60)
                 .build();
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+/*
+        double deltaLat = app.metersToLat(mLatLng.latitude, mLatLng.longitude, SPAWN_AREA);
+        double deltaLng = app.metersToLng(mLatLng.latitude, mLatLng.longitude, SPAWN_AREA);
+        LatLngBounds viewport = new LatLngBounds( new LatLng(mLatLng.latitude - deltaLat, mLatLng.longitude - deltaLng),
+                new LatLng(mLatLng.latitude + deltaLat, mLatLng.longitude + deltaLng));
+        mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(viewport, 16));
+*/
+
         drawSpawnLimit();
         userState = "spawning";
-        msg.setText("Clique no mapa para iniciar.");
+        msg.setText("Clique na área indicada para iniciar.");
         msg.setVisibility(View.VISIBLE);
         ranking.setVisibility(View.GONE);
     }
@@ -791,6 +803,51 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onCameraMove() {
+        double zoom =  mMap.getCameraPosition().zoom;
+        // Capitais
+        int minZoomCapital = 1; // (1 = mundo) As maiores aparecem deste zoom para cima
+        int maxZoomCapital = 4; // As menores aparecem deste zoom para cima
+        int minPtsCapital = 4600; // pontuação da menor capital (população do pais: 8 milhões)
+        int maxPtsCapital = 115000; // aprox pontuação do BR
+        long pointsCapital = (zoom >= maxZoomCapital) ? minPtsCapital : maxPtsCapital - Math.round( (zoom-minZoomCapital)/(maxZoomCapital-minZoomCapital) * (maxPtsCapital-minPtsCapital) );
+
+        // Cidades normais
+        int minZoom = 1;
+        int maxZoom = 8;
+        int minPts = 100; // pontuação da menor cidade
+        int maxPts = 9000; // aprox pontuação das maiores cidades (população: 13 milhões)
+        long points = (zoom >= maxZoom) ? minPts : maxPts - Math.round( (zoom-minZoom)/(maxZoom-minZoom) * (maxPts-minPts) );
+
+        for (Flag flag: game.flagList)
+            if (flag.type.equals("capital")) {
+                flag.marker.setVisible(flag.points >= pointsCapital);
+            } else {
+                flag.marker.setVisible(flag.points >= points);
+            }
+
+        // Elementos pela energia: Players, Foods, Bombs
+        minZoom = 4;
+        maxZoom = 13;
+        int minEnergy = 10; // energia mínima de um elemento desse tipo
+        int maxEnergy = 5000; // aprox a energia dos players maiores
+        long energy = (zoom >= maxZoom) ? minEnergy : maxEnergy - Math.round( (zoom-minZoom)/(maxZoom-minZoom) * (maxEnergy-minEnergy) );
+
+        for (int i = 0; i < game.playerList.size(); i++) {
+            if ( (game.playerList.get(i).marker == null) ||
+                 (game.playerList.get(i).id == mPlayerId) )
+                continue;
+            if (i < 3) {
+                game.playerList.get(i).marker.setVisible(true); // os 3 primeiros sempres estarão visíveis (podium!!!)
+                continue;
+            }
+            game.playerList.get(i).marker.setVisible(game.playerList.get(i).energy >= energy);
+        }
+        for (Food food: game.foodList)
+            food.marker.setVisible(food.energy >= energy);
+        for (Bomb bomb: game.bombList)
+            bomb.marker.setVisible(bomb.energy >= energy);
+
+/*
         // tenta setar a stroke conforme o zoom, mas dá negativo se o mapa está rotacionado...
         Projection projection = mMap.getProjection();
         for (Player player : game.playerList) {
@@ -799,12 +856,12 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             double latDif = player.energyUI.getCenter().latitude - newLatLng.latitude;
             double lngDif = player.energyUI.getCenter().longitude - newLatLng.longitude;
             //status.setText("lat: " + latDif + " lng: " + lngDif);
-/*
             Point p1 = projection.toScreenLocation(player.energyUI.getCenter());
             Point p2 = projection.toScreenLocation(newLatLng);
             player.energyUI.setStrokeWidth(p1.y - p2.y);
+            }
 */
-        }
+
     }
 
     private GeoApiContext getGeoContext() {
@@ -868,8 +925,10 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         Log.e("game", "mD: " + maxDist);
         if ( maxDist <= 0 ) {
             player.clearDirectLimit();
+            findViewById(R.id.btnDirect).setVisibility(View.GONE);
         } else {
             player.drawDirectLimit(latLng, routeLocations.size(), totalRouteDistance);
+            findViewById(R.id.btnDirect).setVisibility(View.VISIBLE);
         }
         if (routeLocations.size() < 2) return;
         if (routePolyline != null)
