@@ -46,7 +46,7 @@ public class Food {
                 .radius(energy) // In meters
                 .fillColor(0x33FF0000)
                 .strokeColor(0xAAFF0000)
-                .strokeWidth(12));
+                .strokeWidth(3*main.metrics.density));
     }
 
     public void drawLabel() {
@@ -57,10 +57,9 @@ public class Food {
         Canvas canvasLabel = new Canvas(bmpLabel);
         Paint color = new Paint();
         color.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        color.setTextSize(40);
+        color.setTextSize(10*main.metrics.density);
         color.setTextAlign(Paint.Align.CENTER);
         color.setColor(0x77550000);
-        color.setShadowLayer(0.5f, 1.0f, 1.0f, Color.WHITE);
         canvasLabel.drawText("+" + energy, 80, 120, color);
         label = main.mMap.addGroundOverlay(new GroundOverlayOptions()
                 .image(BitmapDescriptorFactory.fromBitmap(bmpLabel))
@@ -81,6 +80,7 @@ public class Food {
                 .position(latLng)
                 .icon(BitmapDescriptorFactory.fromBitmap(bmp)));
         marker.setTag("Food:"+id);
+        marker.setVisible(main.isMarkerVisible("food", energy));
     }
 
     public void clear() {

@@ -40,28 +40,24 @@ public class Bomb {
                 .radius(energy) // In meters
                 .fillColor(0x33880000)
                 .strokeColor(0xAA880000)
-                .strokeWidth(4));
+                .strokeWidth(1*main.metrics.density));
 
         Bitmap.Config conf = Bitmap.Config.ARGB_8888;
         Bitmap bmp = Bitmap.createBitmap(160, 200, conf);
         Canvas canvas1 = new Canvas(bmp);
 
         Paint color = new Paint();
-        color.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        color.setTextSize(50);
-        color.setTextAlign(Paint.Align.CENTER);
         color.setColor(0xFF008800);
-        color.setShadowLayer(2.0f, 2.0f, 2.0f, Color.WHITE);
 
-        //canvas1.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.marker), 0,60, color);
         String emojiIcon = String.format("bomb%02d", type+1);
         int resID = main.getResources().getIdentifier(emojiIcon , "drawable", main.getPackageName());
         canvas1.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 0,40, color);
-        canvas1.drawText("("+energy+")", 80, 40, color);
+        //canvas1.drawText("("+energy+")", 80, 40, color);
         marker = main.mMap.addMarker(new MarkerOptions()
                 .position(latLng)
                 .icon(BitmapDescriptorFactory.fromBitmap(bmp)));
         marker.setTag("Bomb:"+id);
+        marker.setVisible(main.isMarkerVisible("bomb", energy));
     }
 
     public void clear() {

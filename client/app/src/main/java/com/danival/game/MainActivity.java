@@ -76,7 +76,7 @@ import io.socket.emitter.Emitter;
 
 public class MainActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener, GoogleMap.OnCameraMoveListener, GoogleMap.OnMarkerClickListener {
 
-    private App app;
+    public App app;
     protected GoogleMap mMap;
     private LatLng mLatLng;
     private FusedLocationProviderClient mFusedLocationClient;
@@ -104,11 +104,13 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private boolean isConnected = false;
     private boolean isLoggedIn = false;
     private String userState = ""; // spawing, buildingRoute, throwingBomb
+    private float previousZoomLevel = -1.0f;
     protected TextView ranking;
     protected TextView msg;
     protected TextView alert;
     protected Game game;
-    public Handler handler; // Animator (movimenta os markers). Iniciado depois do Login com sucesso.
+    public Handler animHandler; // Animator (movimenta os markers). Iniciado depois do Login com sucesso.
+    private Handler zoomHandler; // Verifica a visibilidade ao mudar o zoom
     private List<LatLng> routeLocations;
     private Polyline routePolyline;
 
@@ -360,9 +362,9 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                                     goSpawnState();
                                 }
                                 // inicia as animações de movimento
-                                if (handler == null) {
-                                    handler = new Handler();
-                                    handler.postDelayed(new Animator(MainActivity.this), 80);
+                                if (animHandler == null) {
+                                    animHandler = new Handler();
+                                    animHandler.postDelayed(new Animator(MainActivity.this), 80);
                                 }
                             } else {
                                 mPlayerId = 0;
@@ -417,6 +419,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                             if (player.status.equals("in"))
                                 player.drawOnMap(player.id == mPlayerId);
                         }
+                        checkPlayerListVisibility();
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
                 }
             });
@@ -461,6 +464,8 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                             ranking.setVisibility(View.VISIBLE);
                             findViewById(R.id.btnStartRoute).setVisibility(View.VISIBLE);
                             findViewById(R.id.btnThrowBomb).setVisibility(View.VISIBLE);
+                        } else {
+                            checkPlayerListVisibility();
                         }
 
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
@@ -754,7 +759,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 .radius(SPAWN_AREA) // In meters
                 .fillColor(0x11000000)
                 .strokeColor(0xFF333333)
-                .strokeWidth(4));
+                .strokeWidth(1*metrics.density));
     }
 
     public void clearSpawnLimit() {
@@ -773,13 +778,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 .tilt(60)
                 .build();
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
-/*
-        double deltaLat = app.metersToLat(mLatLng.latitude, mLatLng.longitude, SPAWN_AREA);
-        double deltaLng = app.metersToLng(mLatLng.latitude, mLatLng.longitude, SPAWN_AREA);
-        LatLngBounds viewport = new LatLngBounds( new LatLng(mLatLng.latitude - deltaLat, mLatLng.longitude - deltaLng),
-                new LatLng(mLatLng.latitude + deltaLat, mLatLng.longitude + deltaLng));
-        mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(viewport, 16));
-*/
 
         drawSpawnLimit();
         userState = "spawning";
@@ -801,51 +799,62 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         userState = "";
     }
 
+    public void checkPlayerListVisibility() {
+        int count = 0;
+        for (int i = 0; i < game.playerList.size(); i++) {
+            Player player = game.playerList.get(i);
+            if ( (player.marker == null) ||
+                 player.status.equals("out") )
+                continue;
+            if ( (++count <= 3) || (player.id == mPlayerId) ){
+                player.marker.setVisible(true); // este player e os 3 primeiros sempres estarão visíveis (podium!!!)
+                continue;
+            }
+            player.marker.setVisible(isMarkerVisible("player", player.energy));
+        }
+    }
+
+    public boolean checkVisibility(int zoomMin, int zoomMax, int valueMin, int valueMax, double value) {
+        float zoom =  mMap.getCameraPosition().zoom;
+        long min = (zoom >= zoomMax) ? valueMin : valueMax - Math.round( (zoom-zoomMin)/(zoomMax-zoomMin) * (valueMax-valueMin) );
+        return value >= min;
+    }
+
+    public boolean isMarkerVisible(String type, double value) {
+        if (type.equals("capital")) {
+            return checkVisibility(1, 4, 4600, 115000, value);
+        }
+        if (type.equals("city")) {
+            return checkVisibility(1, 8, 100, 9000, value);
+        }
+        // Player, Food, Bomb
+        return checkVisibility(4, 13, 10, 5000, value);
+    }
+
     @Override
     public void onCameraMove() {
-        double zoom =  mMap.getCameraPosition().zoom;
-        // Capitais
-        int minZoomCapital = 1; // (1 = mundo) As maiores aparecem deste zoom para cima
-        int maxZoomCapital = 4; // As menores aparecem deste zoom para cima
-        int minPtsCapital = 4600; // pontuação da menor capital (população do pais: 8 milhões)
-        int maxPtsCapital = 115000; // aprox pontuação do BR
-        long pointsCapital = (zoom >= maxZoomCapital) ? minPtsCapital : maxPtsCapital - Math.round( (zoom-minZoomCapital)/(maxZoomCapital-minZoomCapital) * (maxPtsCapital-minPtsCapital) );
-
-        // Cidades normais
-        int minZoom = 1;
-        int maxZoom = 8;
-        int minPts = 100; // pontuação da menor cidade
-        int maxPts = 9000; // aprox pontuação das maiores cidades (população: 13 milhões)
-        long points = (zoom >= maxZoom) ? minPts : maxPts - Math.round( (zoom-minZoom)/(maxZoom-minZoom) * (maxPts-minPts) );
-
-        for (Flag flag: game.flagList)
-            if (flag.type.equals("capital")) {
-                flag.marker.setVisible(flag.points >= pointsCapital);
-            } else {
-                flag.marker.setVisible(flag.points >= points);
+        // Reage ao onCameraMove apenas após ter parado de mexer no zoom
+        Runnable onZoomChangeDelayed = new Runnable() {
+            public void run() {
+                checkPlayerListVisibility();
+                for (Flag flag: game.flagList)
+                    flag.marker.setVisible(isMarkerVisible(flag.type, flag.points));
+                for (Food food: game.foodList)
+                    food.marker.setVisible(isMarkerVisible("food", food.energy));
+                for (Bomb bomb: game.bombList)
+                    bomb.marker.setVisible(isMarkerVisible("bomb", bomb.energy));
             }
+        };
 
-        // Elementos pela energia: Players, Foods, Bombs
-        minZoom = 4;
-        maxZoom = 13;
-        int minEnergy = 10; // energia mínima de um elemento desse tipo
-        int maxEnergy = 5000; // aprox a energia dos players maiores
-        long energy = (zoom >= maxZoom) ? minEnergy : maxEnergy - Math.round( (zoom-minZoom)/(maxZoom-minZoom) * (maxEnergy-minEnergy) );
-
-        for (int i = 0; i < game.playerList.size(); i++) {
-            if ( (game.playerList.get(i).marker == null) ||
-                 (game.playerList.get(i).id == mPlayerId) )
-                continue;
-            if (i < 3) {
-                game.playerList.get(i).marker.setVisible(true); // os 3 primeiros sempres estarão visíveis (podium!!!)
-                continue;
-            }
-            game.playerList.get(i).marker.setVisible(game.playerList.get(i).energy >= energy);
+        float zoom =  mMap.getCameraPosition().zoom;
+        if (zoom == previousZoomLevel) return;
+        previousZoomLevel = zoom;
+        if (zoomHandler != null) {
+            zoomHandler.removeCallbacksAndMessages(null);
         }
-        for (Food food: game.foodList)
-            food.marker.setVisible(food.energy >= energy);
-        for (Bomb bomb: game.bombList)
-            bomb.marker.setVisible(bomb.energy >= energy);
+        zoomHandler = new Handler();
+        zoomHandler.postDelayed(onZoomChangeDelayed, 100);
+
 
 /*
         // tenta setar a stroke conforme o zoom, mas dá negativo se o mapa está rotacionado...
@@ -935,10 +944,10 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             routePolyline.remove();
         routePolyline = mMap.addPolyline(
                 new PolylineOptions()
-                        .width(30)
+                        .width(8*metrics.density)
                         .color(0xCC3B7AC9)
                         .jointType(JointType.ROUND)
-                        .endCap(new CustomCap(BitmapDescriptorFactory.fromResource(R.drawable.arrow),32))
+                        .endCap(new CustomCap(BitmapDescriptorFactory.fromResource(R.drawable.arrow),8*metrics.density))
                         .addAll(routeLocations)
         );
     }
@@ -1023,7 +1032,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             player.clearDirectLimit();
         }
         Button btnDirect = (Button) findViewById(R.id.btnDirect);
-        btnDirect.setAlpha(1f);
+        btnDirect.setAlpha(1.0f);
         btnDirect.setClickable(true);
         btnDirect.setVisibility(View.GONE);
 
@@ -1129,7 +1138,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             routePolyline.remove();
         routeLocations.clear();
         Button btnDirect = (Button) findViewById(R.id.btnDirect);
-        btnDirect.setAlpha(1f);
+        btnDirect.setAlpha(1.0f);
         btnDirect.setClickable(true);
         btnDirect.setVisibility(View.GONE);
         findViewById(R.id.btnNormal).setVisibility(View.GONE);
@@ -1201,7 +1210,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
     public void showBtnStartRouteDelayed(int mili) {
         final Button btnStartRoute = (Button) findViewById(R.id.btnStartRoute);
-        btnStartRoute.setAlpha(.5f);
+        btnStartRoute.setAlpha(0.5f);
         btnStartRoute.setClickable(false);
         btnStartRoute.setVisibility(View.VISIBLE);
         new CountDownTimer(mili, 1000) {
@@ -1210,7 +1219,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             }
             public void onFinish() {
                 btnStartRoute.setText("+");
-                btnStartRoute.setAlpha(1f);
+                btnStartRoute.setAlpha(1.0f);
                 btnStartRoute.setClickable(true);
             }
         }.start();
@@ -1218,7 +1227,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
     public void showBtnThrowBombDelayed(int mili) {
         final Button btnThrowBomb = (Button) findViewById(R.id.btnThrowBomb);
-        btnThrowBomb.setAlpha(.5f);
+        btnThrowBomb.setAlpha(0.5f);
         btnThrowBomb.setClickable(false);
         btnThrowBomb.setVisibility(View.VISIBLE);
         new CountDownTimer(mili, 1000) {

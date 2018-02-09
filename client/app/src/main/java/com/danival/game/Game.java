@@ -212,6 +212,7 @@ public class Game {
             main.ranking.setText(sb);
             main.ranking.setVisibility(View.VISIBLE);
         }
+        //main.checkPlayerListVisibility();
     }
 
 }

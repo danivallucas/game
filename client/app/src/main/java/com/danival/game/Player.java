@@ -23,6 +23,7 @@ import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.GroundOverlay;
 import com.google.android.gms.maps.model.GroundOverlayOptions;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolygonOptions;
@@ -87,22 +88,32 @@ public class Player {
     public Bitmap getIconBmp() {
         Bitmap bmp = Bitmap.createBitmap(300, 340, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bmp);
+
+        Paint stroke = new Paint();
+        stroke.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        stroke.setTextSize(12*main.metrics.density);
+        stroke.setTextAlign(Paint.Align.CENTER);
+        stroke.setColor(Color.WHITE);
+        stroke.setStyle(Paint.Style.STROKE);
+        stroke.setStrokeWidth(3*main.metrics.density);
+
         Paint color = new Paint();
         color.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        color.setTextSize(50);
+        color.setTextSize(12*main.metrics.density);
         color.setTextAlign(Paint.Align.CENTER);
         color.setColor(Color.BLACK);
-        color.setShadowLayer(2.0f, 2.0f, 2.0f, Color.WHITE);
+
         if (!onLine)
             color.setColorFilter(colorFilter);
 
         //String emojiIcon = String.format("emoji%03d", emoji+1);
-        String emojiIcon = String.format("emoji%03d", Math.max(id*5,1));
+        String emojiIcon = String.format("emoji%03d", Math.max(id*5,1)); // testes!!!
         int resID = main.getResources().getIdentifier(emojiIcon , "drawable", main.getPackageName());
         canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.marker), 0,60, color);
         canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 70,80, color);
         //canvas1.drawText(name, 150, 40, color);
-        canvas.drawText("Player " + id, 150, 40, color);
+        canvas.drawText("Player " + id, 150, 40, stroke); // testes!!!
+        canvas.drawText("Player " + id, 150, 40, color); // testes!!!
         return bmp;
     }
 
@@ -116,15 +127,19 @@ public class Player {
                 .alpha(0.7f));
         marker.setTag("Player:"+id);
 
+        //float zoom = Math.max(1f, 19-(((float)energy - 10)/(5000-10)*(19-11))); // energia 10 = zoom 19, energia 5000 = zoom 11
+        //Log.e("game", "zoom: " + zoom);
+        main.game.drawRanking();
         if (moveCamera) {
+            double START_ZOOM = 19;
+            double zoom = START_ZOOM - Math.log((float)energy/main.START_ENERGY)/Math.log(2);
             CameraPosition cameraPosition = new CameraPosition.Builder()
                     .target(latLng)
-                    .zoom(19)
+                    .zoom((float)zoom)
                     .tilt(60)
                     .build();
             main.mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         }
-        main.game.drawRanking();
     }
 
     public void removeFromMap() {
@@ -172,9 +187,9 @@ public class Player {
         Canvas canvasLabel = new Canvas(bmpLabel);
         Paint color = new Paint();
         color.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        color.setTextSize(50);
+        color.setTextSize(9*main.metrics.density);
         color.setTextAlign(Paint.Align.CENTER);
-        color.setColor(0x77000055);
+        color.setColor(0x55000055);
         color.setShadowLayer(0.5f, 1.0f, 1.0f, Color.WHITE);
         if (flagPoints > 0) {
             canvasLabel.drawText("+" + main.format.format(energy), 80, 100, color);
@@ -195,7 +210,7 @@ public class Player {
                 .center(latLng)
                 .radius((energy - main.BOMB_UNIT_COST - main.START_ENERGY) * main.BOMB_MAX_DIST) // In meters
                 .strokeColor(0xFFAAAAAA)
-                .strokeWidth(4));
+                .strokeWidth(1*main.metrics.density));
     }
 
     public void clearBombLimit() {
@@ -217,7 +232,7 @@ public class Player {
                 .center(latLng)
                 .radius(maxDist) // In meters
                 .strokeColor(0xFFAAAAAA)
-                .strokeWidth(4));
+                .strokeWidth(1*main.metrics.density));
     }
 
     public void clearDirectLimit() {
@@ -253,8 +268,8 @@ public class Player {
         status = "moving";
         drawMoving(); // para calcular a posição de acordo com o tempo de movimento decorrido
         main.game.drawRanking();
-        if (marker == null) // se logou e este player já estava em movimento, ainda não está desenhado no mapa
-            drawOnMap(true);
+        if (marker == null) // no login, se este player já estava em movimento, ainda não está desenhado no mapa (até esse ponto não tem como saber a posição em que se encontra)
+            drawOnMap(id == main.mPlayerId);
         // o Animator continuará movendo este player no mapa
     }
 

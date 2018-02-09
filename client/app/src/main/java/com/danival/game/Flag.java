@@ -52,7 +52,7 @@ public class Flag {
                 .radius(energy) // In meters
                 .fillColor(0x11000000)
                 .strokeColor(0x77000000)
-                .strokeWidth(4));
+                .strokeWidth(1*main.metrics.density));
     }
 
     public void drawLabel() {
@@ -63,7 +63,7 @@ public class Flag {
         Canvas canvasLabel = new Canvas(bmpLabel);
         Paint color = new Paint();
         color.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        color.setTextSize(30);
+        color.setTextSize(8*main.metrics.density);
         color.setTextAlign(Paint.Align.CENTER);
         color.setColor(0x99000000);
         color.setShadowLayer(0.5f, 1.0f, 1.0f, Color.WHITE);
@@ -91,7 +91,7 @@ public class Flag {
 
         Paint color = new Paint();
         color.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        color.setTextSize(40);
+        color.setTextSize(10*main.metrics.density);
         color.setTextAlign(Paint.Align.CENTER);
         color.setColor(0xFF000000);
         color.setShadowLayer(2.0f, 2.0f, 2.0f, Color.WHITE);
@@ -108,6 +108,7 @@ public class Flag {
                 .anchor(anchorX, anchorY)
                 .icon(BitmapDescriptorFactory.fromBitmap(bmp)));
         marker.setTag("Flag:"+id);
+        marker.setVisible(main.isMarkerVisible(type, points));
     }
 
     public void clear() {

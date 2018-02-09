@@ -44,7 +44,7 @@ public class EnergyBall {
                 .radius(energy) // In meters
                 .fillColor(0x330000FF)
                 .strokeColor(0xAA0000FF)
-                .strokeWidth(4));
+                .strokeWidth(1*main.metrics.density));
     }
 
     public void drawLabel() {
@@ -55,7 +55,7 @@ public class EnergyBall {
         Canvas canvasLabel = new Canvas(bmpLabel);
         Paint color = new Paint();
         color.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        color.setTextSize(40);
+        color.setTextSize(10*main.metrics.density);
         color.setTextAlign(Paint.Align.CENTER);
         color.setColor(0x77000055);
         color.setShadowLayer(0.5f, 1.0f, 1.0f, Color.WHITE);
