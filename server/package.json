@@ -7,8 +7,10 @@
   "private": true,
   "license": "BSD",
   "dependencies": {
+    "@google/maps": "^0.4.5",
     "base64url": "^2.0.0",
     "express": "4.13.4",
+    "request": "^2.83.0",
     "socket.io": "^1.7.2"
   },
   "scripts": {

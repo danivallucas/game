@@ -803,11 +803,12 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         int count = 0;
         for (int i = 0; i < game.playerList.size(); i++) {
             Player player = game.playerList.get(i);
-            if ( (player.marker == null) ||
-                 player.status.equals("out") )
+            if (    (player.marker == null) ||
+                    (player.status.equals("out")) ||
+                    (player.id == mPlayerId)    )
                 continue;
-            if ( (++count <= 3) || (player.id == mPlayerId) ){
-                player.marker.setVisible(true); // este player e os 3 primeiros sempres estarão visíveis (podium!!!)
+            if (++count <= 3) {
+                player.marker.setVisible(true); // os 3 primeiros sempres estarão visíveis (podium!!!)
                 continue;
             }
             player.marker.setVisible(isMarkerVisible("player", player.energy));

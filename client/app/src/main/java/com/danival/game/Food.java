@@ -78,6 +78,7 @@ public class Food {
         canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 0,0, new Paint());
         marker = main.mMap.addMarker(new MarkerOptions()
                 .position(latLng)
+                .anchor(0.5F, 1F)
                 .icon(BitmapDescriptorFactory.fromBitmap(bmp)));
         marker.setTag("Food:"+id);
         marker.setVisible(main.isMarkerVisible("food", energy));

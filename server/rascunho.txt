@@ -1,0 +1,80 @@
+/*
+//{id: 0, type: 'capital', fmtAddress: '', population: 1409517397, lat: 39.916667, lng: 116.383333, placeId: '', viewport:{northeast: {lat: 0, lng: 0}, southwest: {lat: 0, lng: 0}}, energy: 0, wall: 0, playerId: -1}
+//for (var i = 0; i < flagList.length; i++) {
+  googleMapsClient.reverseGeocode({
+    //latlng: [14.583333, 120.966667],
+    //latlng: [-19.142969, -47.935946], // tapuirama
+    //latlng: [-19.484871, -46.541498], // ibiá
+    //latlng: [-19.586893, -46.939548], // araxá
+    //latlng: [-18.921136, -48.258369], // uberlândia
+    latlng: [31.067726, 121.648382], // xangai
+    result_type: ['locality']
+  }, function(err, response) {
+    if (!err) {
+      var r = response.json.results[0];
+      var loc = r.geometry.location;
+      var vp = r.geometry.viewport;
+      var dist = getDist(vp.northeast.lat, vp.northeast.lng, vp.southwest.lat, vp.southwest.lng);
+      console.log("{fa: '"+r.formatted_address+"', pi: '"+r.place_id+"', lat: "+loc.lat+", lng: "+loc.lng+", neLat: "+
+      vp.northeast.lat+", neLng: "+
+      vp.northeast.lng+", swLat: "+
+      vp.southwest.lat+", swLng: "+
+      vp.southwest.lng+"},");
+
+      dist = 1000;
+      var maxDiagonal = 85000;
+      var percent = dist > maxDiagonal ? 1 : dist/maxDiagonal;
+      var maxPop = 12000000;
+      pop = Math.floor(Math.pow(70, percent-1) * maxPop);
+      console.log("diagonal: " + dist + ' population: ' + pop);
+
+    }
+  });
+//}
+*/
+
+console.log('');
+console.log('--- LISTA ---');
+var erroList = [];
+function getGeoc(p) {
+  for (var i = 0; i < geocList.length; i++) {
+    geocList[i].fa = geocList[i].fa.replace("'", "");
+    var campos = geocList[i].fa.split(",");
+    var pais = campos[campos.length-1].trim();
+    if (pais == p) {
+      var r = geocList[i];
+      geocList.splice(i, 1);
+      return r;
+    }
+  }
+  return '';
+}
+
+for (var i = 0; i < flagList.length; i++) {
+  var g = getGeoc(flagList[i].country);
+  if (g == '') {
+    erroList.push(flagList[i].id);
+    continue;
+  }
+
+  var dist = getDist(flagList[i].lat, flagList[i].lng, g.lat, g.lng);
+  console.log("{id: "+flagList[i].id+
+    ", type: 'capital', fmtAddress: '"+g.fa+
+    "', population: "+flagList[i].population+
+    ", lat: "+g.lat+", lng: "+g.lng+
+    ", placeId: '"+g.pi+
+    "', viewport:{northeast: {lat: "+g.neLat+", lng: "+g.neLng+
+    "}, southwest: {lat: "+          g.swLat+", lng: "+g.swLng+
+    "}}, energy: 0, wall: 0, playerId: -1, dist: "+dist+"},");
+}
+console.log('');
+console.log('--- erroList ---');
+for (var i = 0; i < erroList.length; i++) {
+  console.log('erro ' + i + ' id: ' + erroList[i]);
+}
+console.log('');
+console.log('--- geocList ---');
+for (var i = 0; i < geocList.length; i++) {
+  console.log(geocList[i]);
+}
+
