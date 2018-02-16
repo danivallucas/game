@@ -9,6 +9,9 @@ import android.widget.GridLayout;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+
+import com.google.android.gms.maps.model.LatLng;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -49,8 +52,8 @@ public class Game {
     }
 
 
-    public Player newPlayer(int id, String name, int emoji, boolean onLine, String status, double lat, double lng, int energy, double flagPoints) {
-        Player player = new Player(main, id, name, emoji, onLine, status, lat, lng, energy, flagPoints);
+    public Player newPlayer(int id, String name, int emoji, boolean onLine, String status, LatLng position, int energy, double flagPoints, int energyToRestore) {
+        Player player = new Player(main, id, name, emoji, onLine, status, position, energy, flagPoints, energyToRestore);
         playerList.add(player);
         return player;
     }
@@ -74,8 +77,8 @@ public class Game {
     }
 
 
-    public Food newFood(int id, int type, double lat, double lng, int energy) {
-        Food food = new Food(main, id, type, lat, lng, energy);
+    public Food newFood(int id, int type, LatLng position, int energy) {
+        Food food = new Food(main, id, type, position, energy);
         foodList.add(food);
         return food;
     }
@@ -100,8 +103,8 @@ public class Game {
     }
 
 
-    public Bomb newBomb(int id, int type, double lat, double lng, int energy) {
-        Bomb bomb = new Bomb(main, id, type, lat, lng, energy);
+    public Bomb newBomb(int id, int type, LatLng position, int energy) {
+        Bomb bomb = new Bomb(main, id, type, position, energy);
         bombList.add(bomb);
         return bomb;
     }
@@ -126,8 +129,8 @@ public class Game {
     }
 
 
-    public EnergyBall newEnergyBall(int id, int type, double lat, double lng, int energy) {
-        EnergyBall energyBall = new EnergyBall(main, id, type, lat, lng, energy);
+    public EnergyBall newEnergyBall(int id, int type, LatLng position, int energy) {
+        EnergyBall energyBall = new EnergyBall(main, id, type, position, energy);
         energyBallList.add(energyBall);
         return energyBall;
     }
@@ -152,8 +155,8 @@ public class Game {
     }
 
 
-    public Flag newFlag(int id, String type, double lat, double lng, int energy, int wall, int playerId, double points) {
-        Flag flag = new Flag(main, id, type, lat, lng, energy, wall, playerId, points);
+    public Flag newFlag(int id, String type, LatLng position, int energy, int wall, int playerId, double points) {
+        Flag flag = new Flag(main, id, type, position, energy, wall, playerId, points);
         flagList.add(flag);
         return flag;
     }
@@ -200,7 +203,9 @@ public class Game {
             if (!playerList.get(i).status.equals("out")) {
                 if (!sb.toString().equals(""))
                     sb.append("\n");
-                sb.append(++count + ". Player" + playerList.get(i).id + " (" + playerList.get(i).energy + ")");
+                //sb.append(++count + ". Player " + playerList.get(i).id + " (" + playerList.get(i).energy + ")");
+                //sb.append(++count + ". Player " + playerList.get(i).id);
+                sb.append(++count + ". " + playerList.get(i).name);
                 if (playerList.get(i).flagPoints > 0)
                     sb.append(": " + main.format.format(Math.ceil(playerList.get(i).flagPoints)));
             }

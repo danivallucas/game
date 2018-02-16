@@ -21,8 +21,7 @@ public class Flag {
     protected MainActivity main;
     public int id;
     public String type;
-    public double lat;
-    public double lng;
+    public LatLng position;
     public int energy;
     public int wall;
     public int playerId;
@@ -31,12 +30,11 @@ public class Flag {
     public Marker marker;
     public GroundOverlay label;
 
-    public Flag(MainActivity context, int _id, String _type, double _lat, double _lng, int _energy, int _wall, int _playerId, double _points) {
+    public Flag(MainActivity context, int _id, String _type, LatLng _position, int _energy, int _wall, int _playerId, double _points) {
         main = context;
         id = _id;
         type = _type;
-        lat = _lat;
-        lng = _lng;
+        position = _position;
         energy = _energy;
         wall = _wall;
         playerId = _playerId;
@@ -44,11 +42,10 @@ public class Flag {
     }
 
     public void drawEnergy() {
-        LatLng latLng = new LatLng(lat, lng);
         if (energyUI != null)
             energyUI.remove();
         energyUI = main.mMap.addCircle(new CircleOptions()
-                .center(latLng)
+                .center(position)
                 .radius(energy) // In meters
                 .fillColor(0x11000000)
                 .strokeColor(0x77000000)
@@ -56,10 +53,11 @@ public class Flag {
     }
 
     public void drawLabel() {
-        LatLng latLng = new LatLng(lat, lng);
         if (label != null)
             label.remove();
-        Bitmap bmpLabel = Bitmap.createBitmap(160, 160, Bitmap.Config.ARGB_8888);
+        int w = Math.round(40*main.metrics.density);
+        int h = Math.round(40*main.metrics.density);
+        Bitmap bmpLabel = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas canvasLabel = new Canvas(bmpLabel);
         Paint color = new Paint();
         color.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
@@ -69,42 +67,50 @@ public class Flag {
         color.setShadowLayer(0.5f, 1.0f, 1.0f, Color.WHITE);
         if (playerId >= 0) {// default é -1
             Player player = main.game.getPlayer(playerId);
-            canvasLabel.drawText("$" + main.format.format(Math.ceil(points)), 80, 100, color);
-            canvasLabel.drawText(player.name, 80, 140, color);
-        } else {
-            canvasLabel.drawText("$" + main.format.format(Math.ceil(points)), 80, 120, color);
+            canvasLabel.drawText(player.name, 20*main.metrics.density, 35*main.metrics.density, color);
         }
         label = main.mMap.addGroundOverlay(new GroundOverlayOptions()
                 .image(BitmapDescriptorFactory.fromBitmap(bmpLabel))
-                .position(latLng, (float)energy*2, (float)energy*2));
+                .position(position, (float)energy*2, (float)energy*2));
     }
 
 
     public void drawOnMap() {
         drawEnergy();
         drawLabel();
-        LatLng latLng = new LatLng(lat, lng);
 
+        int w = Math.round(40*main.metrics.density);
+        int h = Math.round(50*main.metrics.density);
         Bitmap.Config conf = Bitmap.Config.ARGB_8888;
-        Bitmap bmp = Bitmap.createBitmap(160, 200, conf);
+        Bitmap bmp = Bitmap.createBitmap(w, h, conf);
         Canvas canvas = new Canvas(bmp);
+
+        Paint stroke = new Paint();
+        stroke.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        stroke.setTextSize(10*main.metrics.density);
+        stroke.setTextAlign(Paint.Align.CENTER);
+        stroke.setColor(Color.WHITE);
+        stroke.setStyle(Paint.Style.STROKE);
+        stroke.setStrokeWidth(3*main.metrics.density);
 
         Paint color = new Paint();
         color.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         color.setTextSize(10*main.metrics.density);
         color.setTextAlign(Paint.Align.CENTER);
         color.setColor(0xFF000000);
-        color.setShadowLayer(2.0f, 2.0f, 2.0f, Color.WHITE);
+        //color.setShadowLayer(2.0f, 2.0f, 2.0f, Color.WHITE);
 
         //canvas1.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.marker), 0,60, color);
         String emojiIcon = (type.equals("city")) ? "flag000" : String.format("flag%03d", id+1);
         int resID = main.getResources().getIdentifier(emojiIcon , "drawable", main.getPackageName());
-        canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 0,40, color);
+        canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 0,10*main.metrics.density, color);
+        canvas.drawText("" + main.format.format(Math.ceil(points)), 40.0f/2*main.metrics.density, 10*main.metrics.density, stroke);
+        canvas.drawText("" + main.format.format(Math.ceil(points)), 40.0f/2*main.metrics.density, 10*main.metrics.density, color);
 
         float anchorX = type.equals("capital") ? 0.5F : 0.1F;
         float anchorY = type.equals("capital") ? 0.59F : 0.98F;
         marker = main.mMap.addMarker(new MarkerOptions()
-                .position(latLng)
+                .position(position)
                 .anchor(anchorX, anchorY)
                 .icon(BitmapDescriptorFactory.fromBitmap(bmp)));
         marker.setTag("Flag:"+id);
@@ -115,8 +121,14 @@ public class Flag {
         if (marker != null) {
             marker.remove();
             marker = null;
+        }
+        if (energyUI != null) {
             energyUI.remove();
             energyUI = null;
+        }
+        if (label != null) {
+            label.remove();
+            label = null;
         }
     }
 

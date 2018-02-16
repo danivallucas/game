@@ -76,9 +76,16 @@ import io.socket.emitter.Emitter;
 
 public class MainActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener, GoogleMap.OnCameraMoveListener, GoogleMap.OnMarkerClickListener {
 
+    public int START_ENERGY;
+    public int WAIT_AFTER_LEG;
+    public int WAIT_AFTER_BOMB;
+    public int BOMB_MAX_DIST;
+    public int BOMB_UNIT_COST;
+    public int TURBO_MAX_DIST;
+    public int SPAWN_AREA;
     public App app;
+    public Socket mSocket;
     protected GoogleMap mMap;
-    private LatLng mLatLng;
     private FusedLocationProviderClient mFusedLocationClient;
     private ColorMatrix colorMatrix;
     private ColorMatrixColorFilter colorFilter;
@@ -90,20 +97,11 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private String mPlayerName;
     private int mEmoji;
     private String mPlayerToken;
+    private LatLng mPosition;
     private Circle spawnLimitUI;
-    public int DIRECT_UNIT_COST;
-    public int START_ENERGY;
-    public int WAIT_AFTER_LEG;
-    public int WAIT_AFTER_BOMB;
-    public int BOMB_MAX_DIST;
-    public int BOMB_UNIT_COST;
-    public int DRIVING_MAX_DIST;
-    public int DIRECT_MAX_DIST;
-    public int SPAWN_AREA;
-    public Socket mSocket;
     private boolean isConnected = false;
     private boolean isLoggedIn = false;
-    private String userState = ""; // spawing, buildingRoute, throwingBomb
+    private int uiState = 0; // 0=conectando, 1=spawing, 2=main, 3=Go, 4=turbo, 5=Bomb, 6=Moving
     private float previousZoomLevel = -1.0f;
     protected TextView ranking;
     protected TextView msg;
@@ -111,9 +109,8 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     protected Game game;
     public Handler animHandler; // Animator (movimenta os markers). Iniciado depois do Login com sucesso.
     private Handler zoomHandler; // Verifica a visibilidade ao mudar o zoom
-    private List<LatLng> routeLocations;
+    private List<LatLng> routePositions;
     private Polyline routePolyline;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -135,7 +132,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         ranking = (TextView) this.findViewById(R.id.ranking);
         msg = (TextView)findViewById(R.id.msg);
         alert = (TextView)findViewById(R.id.alert);
-        routeLocations = new ArrayList<LatLng>();
+        routePositions = new ArrayList<LatLng>();
     }
 
     private void setUpSocket() {
@@ -252,7 +249,17 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    public void tryConnectAgain(int mili) {
+        new CountDownTimer(mili, 0) {
+            public void onTick(long millisUntilFinished) {}
+            public void onFinish() {
+                enterGame();
+            }
+        }.start();
+    }
+
     private void enterGame() {
+        changeUIState(0);
         mSocket.connect();
     }
 
@@ -265,7 +272,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             game.clear();
         }
         isLoggedIn = false;
-        cancelRoute(null);
+        changeUIState(0);
     }
 
     private Emitter.Listener onConnect = new Emitter.Listener() {
@@ -301,8 +308,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    alert.setText("Conectando...");
-                    alert.setVisibility(View.VISIBLE);
                     tryConnectAgain(1000);
                 }
             });
@@ -341,25 +346,23 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                                 String playerStatus = data.getString("playerStatus");
                                 JSONObject conf = data.getJSONObject("conf");
                                 START_ENERGY = conf.getInt("START_ENERGY");
-                                DIRECT_UNIT_COST = conf.getInt("DIRECT_UNIT_COST");
                                 WAIT_AFTER_LEG = conf.getInt("WAIT_AFTER_LEG");
                                 WAIT_AFTER_BOMB = conf.getInt("WAIT_AFTER_BOMB");
                                 BOMB_MAX_DIST = conf.getInt("BOMB_MAX_DIST");
                                 BOMB_UNIT_COST =  conf.getInt("BOMB_UNIT_COST");
-                                DRIVING_MAX_DIST = conf.getInt("DRIVING_MAX_DIST");
-                                DIRECT_MAX_DIST = conf.getInt("DIRECT_MAX_DIST");
+                                TURBO_MAX_DIST = conf.getInt("TURBO_MAX_DIST");
                                 SPAWN_AREA = conf.getInt("SPAWN_AREA");
                                 isLoggedIn = true;
-                                if (playerStatus.equals("in")) {
-                                    findViewById(R.id.btnStopPlayer).setVisibility(View.GONE);
-                                    showBtnThrowBombDelayed(data.getInt("timeToNewBomb"));
-                                    showBtnStartRouteDelayed(data.getInt("timeToNewRoute"));
-                                }
                                 if (playerStatus.equals("out")) {
-                                    findViewById(R.id.btnStartRoute).setVisibility(View.GONE);
-                                    findViewById(R.id.btnStopPlayer).setVisibility(View.GONE);
-                                    findViewById(R.id.btnThrowBomb).setVisibility(View.GONE);
                                     goSpawnState();
+                                } else {
+                                    setBtnGoDelayed(data.getInt("timeToNewRoute"));
+                                    setBtnTurboDelayed(data.getInt("timeToNewRoute"));
+                                    setBtnBombDelayed(data.getInt("timeToNewBomb"));
+                                    if (playerStatus.equals("in"))
+                                        changeUIState(2);
+                                    if (playerStatus.equals("moving"))
+                                        changeUIState(6);
                                 }
                                 // inicia as animações de movimento
                                 if (animHandler == null) {
@@ -372,6 +375,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                                 startSignIn();
                             }
                         } else {
+                            if (!isLoggedIn) return;
                             Player player = game.getPlayer(id);
                             player.onLine = true;
                             if (player.status.equals("in"))
@@ -390,12 +394,13 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void run() {
                     try {
+                        if (!isLoggedIn) return;
                         Log.e("game", "onNewFlag.....");
                         JSONArray list = (JSONArray) args[0];
                         for (int i = 0; i < list.length(); i++) {
                             JSONObject data = list.getJSONObject(i);
                             Log.e("game", "id: " + data.getString("id") + " type: " + data.getString("type") + " points: " + data.getString("points") + " ");
-                            Flag flag = game.newFlag(data.getInt("id"), data.getString("type"), data.getDouble("lat"), data.getDouble("lng"), data.getInt("energy"), data.getInt("wall"), data.getInt("playerId"), data.getDouble("points"));
+                            Flag flag = game.newFlag(data.getInt("id"), data.getString("type"), new LatLng(data.getDouble("lat"), data.getDouble("lng")), data.getInt("energy"), data.getInt("wall"), data.getInt("playerId"), data.getDouble("points"));
                             flag.drawOnMap();
                         }
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
@@ -411,10 +416,11 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void run() {
                     try {
+                        if (!isLoggedIn) return;
                         JSONArray list = (JSONArray) args[0];
                         for (int i = 0; i < list.length(); i++) {
                             JSONObject data = list.getJSONObject(i);
-                            Player player = game.newPlayer(data.getInt("id"), data.getString("name"), data.getInt("emoji"), data.getBoolean("onLine"), data.getString("status"), data.getDouble("lat"), data.getDouble("lng"), data.getInt("energy"), data.getDouble("flagPoints"));
+                            Player player = game.newPlayer(data.getInt("id"), data.getString("name"), data.getInt("emoji"), data.getBoolean("onLine"), data.getString("status"), new LatLng(data.getDouble("lat"), data.getDouble("lng")), data.getInt("energy"), data.getDouble("flagPoints"), data.getInt("energyToRestore"));
                             // draw on map
                             if (player.status.equals("in"))
                                 player.drawOnMap(player.id == mPlayerId);
@@ -434,6 +440,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 public void run() {
                     JSONObject data = (JSONObject) args[0];
                     try {
+                        if (!isLoggedIn) return;
                         Player player = game.getPlayer(data.getInt("id"));
                         player.onLine = false;
                         if (!player.status.equals("out"))
@@ -450,20 +457,17 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void run() {
                     try {
+                        if (!isLoggedIn) return;
                         JSONObject data = (JSONObject) args[0];
                         int id = data.getInt("id");
                         Player player = game.getPlayer(id);
                         player.status = data.getString("status");
                         player.energy = data.getInt("energy");
-                        player.setLocation(data.getDouble("lat"), data.getDouble("lng"));
+                        player.energyToRestore = data.getInt("energyToRestore");
+                        player.setPosition(new LatLng(data.getDouble("lat"), data.getDouble("lng")));
                         player.drawOnMap((id == mPlayerId));
-                        //player.drawArea(data.getDouble("lat1"), data.getDouble("lng1"), data.getDouble("lat2"), data.getDouble("lng2"));
                         if (id == mPlayerId) {
-                            userState = "";
-                            msg.setVisibility(View.GONE);
-                            ranking.setVisibility(View.VISIBLE);
-                            findViewById(R.id.btnStartRoute).setVisibility(View.VISIBLE);
-                            findViewById(R.id.btnThrowBomb).setVisibility(View.VISIBLE);
+                            changeUIState(2);
                         } else {
                             checkPlayerListVisibility();
                         }
@@ -481,10 +485,11 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void run() {
                     try {
+                        if (!isLoggedIn) return;
                         JSONArray list = (JSONArray) args[0];
                         for (int i = 0; i < list.length(); i++) {
                             JSONObject data = list.getJSONObject(i);
-                            Food food = game.newFood(data.getInt("id"), data.getInt("type"), data.getDouble("lat"), data.getDouble("lng"), data.getInt("energy"));
+                            Food food = game.newFood(data.getInt("id"), data.getInt("type"), new LatLng(data.getDouble("lat"), data.getDouble("lng")), data.getInt("energy"));
                             food.drawOnMap();
                         }
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
@@ -500,6 +505,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void run() {
                     try {
+                        if (!isLoggedIn) return;
                         JSONObject data = (JSONObject) args[0];
                         game.removeFood(data.getInt("id"));
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
@@ -515,11 +521,12 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void run() {
                     try {
+                        if (!isLoggedIn) return;
                         Log.e("game", "onNewBomb");
                         JSONArray list = (JSONArray) args[0];
                         for (int i = 0; i < list.length(); i++) {
                             JSONObject data = list.getJSONObject(i);
-                            Bomb bomb = game.newBomb(data.getInt("id"), data.getInt("type"), data.getDouble("lat"), data.getDouble("lng"), data.getInt("energy"));
+                            Bomb bomb = game.newBomb(data.getInt("id"), data.getInt("type"), new LatLng(data.getDouble("lat"), data.getDouble("lng")), data.getInt("energy"));
                             bomb.drawOnMap();
                         }
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
@@ -535,6 +542,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void run() {
                     try {
+                        if (!isLoggedIn) return;
                         JSONObject data = (JSONObject) args[0];
                         game.removeBomb(data.getInt("id"));
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
@@ -550,10 +558,11 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void run() {
                     try {
+                        if (!isLoggedIn) return;
                         JSONArray list = (JSONArray) args[0];
                         for (int i = 0; i < list.length(); i++) {
                             JSONObject data = list.getJSONObject(i);
-                            EnergyBall energyBall = game.newEnergyBall(data.getInt("id"), data.getInt("type"), data.getDouble("lat"), data.getDouble("lng"), data.getInt("energy"));
+                            EnergyBall energyBall = game.newEnergyBall(data.getInt("id"), data.getInt("type"), new LatLng(data.getDouble("lat"), data.getDouble("lng")), data.getInt("energy"));
                             energyBall.drawOnMap();
                         }
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
@@ -569,6 +578,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void run() {
                     try {
+                        if (!isLoggedIn) return;
                         JSONObject data = (JSONObject) args[0];
                         game.removeEnergyBall(data.getInt("id"));
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
@@ -584,11 +594,13 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void run() {
                     try {
+                        if (!isLoggedIn) return;
                         JSONObject data = (JSONObject) args[0];
                         int id = data.getInt("id");
                         JSONArray legList = data.getJSONArray("legList");
                         Player player = game.getPlayer(id);
                         player.energy = data.getInt("energy");
+                        player.energyToRestore = data.getInt("energyToRestore");
                         player.drawEnergy();
                         //player.setStatus(data.getString("status"));
                         player.onMove(legList);
@@ -605,17 +617,17 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void run() {
                     try {
+                        if (!isLoggedIn) return;
                         JSONObject data = (JSONObject) args[0];
                         int id = data.getInt("id");
                         Player player = game.getPlayer(id);
                         if ( (player.id == mPlayerId) && (player.legList.size() == 1) ) {
-                            // se é a última leg, esconde o STOP
-                            findViewById(R.id.btnStopPlayer).setVisibility(View.GONE);
-                            //findViewById(R.id.btnStartRoute).setVisibility(View.VISIBLE);
-                            showBtnStartRouteDelayed(data.getInt("timeToNewRoute"));
-                            findViewById(R.id.btnThrowBomb).setVisibility(View.VISIBLE);
+                            // se é a última leg, sai do uiState=6 (moving)
+                            setBtnGoDelayed(data.getInt("timeToNewRoute"));
+                            setBtnTurboDelayed(data.getInt("timeToNewRoute"));
+                            changeUIState(2);
                         }
-                        player.onLegFinished(data.getString("status"), data.getDouble("lat"), data.getDouble("lng"));
+                        player.onLegFinished(data.getString("status"), new LatLng(data.getDouble("lat"), data.getDouble("lng")));
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
                 }
             });
@@ -629,10 +641,19 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void run() {
                     try {
+                        if (!isLoggedIn) return;
                         JSONObject data = (JSONObject) args[0];
                         int id = data.getInt("id");
                         Player player = game.getPlayer(id);
-                        player.onEnergyChange(data.getInt("energy"));
+                        player.onEnergyChange(data.getInt("energy"), data.getInt("energyToRestore"));
+                        if (id == mPlayerId) {
+                            if (uiState == 2)
+                                changeUIState(2); // atualiza visibilidade dos botões
+                            if ( (uiState == 3) || (uiState == 4) || (uiState == 5) ) {
+                                Toast.makeText(getApplicationContext(), "Você foi atingido!", Toast.LENGTH_LONG).show();
+                                onBtnCancelClick(null); // cancela a operação que estiver fazendo e vai para a tela inicial (uiState=2)
+                            }
+                        }
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
                 }
             });
@@ -646,6 +667,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void run() {
                     try {
+                        if (!isLoggedIn) return;
                         JSONObject data = (JSONObject) args[0];
                         int playerId = data.getInt("playerId");
                         Player player = game.getPlayer(playerId);
@@ -666,11 +688,18 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void run() {
                     try {
+                        if (!isLoggedIn) return;
                         JSONObject data = (JSONObject) args[0];
                         int id = data.getInt("id");
-                        Toast.makeText(getApplicationContext(), "onStop: " + id, Toast.LENGTH_LONG).show();
+                        //Toast.makeText(getApplicationContext(), "onStop: " + id, Toast.LENGTH_LONG).show();
                         Player player = game.getPlayer(id);
-                        player.stop(data.getDouble("lat"), data.getDouble("lng"));
+                        player.stop(new LatLng(data.getDouble("lat"), data.getDouble("lng")));
+                        if (id == mPlayerId) {
+                            int wait = data.getInt("timeToNewRoute");
+                            setBtnGoDelayed(wait);
+                            setBtnTurboDelayed(wait);
+                        }
+
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
                 }
             });
@@ -684,15 +713,14 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void run() {
                     try {
+                        if (!isLoggedIn) return;
                         JSONObject data = (JSONObject) args[0];
                         int id = data.getInt("id");
                         Player player = game.getPlayer(id);
                         player.status = data.getString("status");
                         player.removeFromMap();
-                        if (id == mPlayerId) {
-                            cancelRoute(null);
+                        if (id == mPlayerId)
                             goSpawnState();
-                        }
 
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
                 }
@@ -700,7 +728,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         }
     };
 
-        private Emitter.Listener onTest = new Emitter.Listener() {
+    private Emitter.Listener onTest = new Emitter.Listener() {
         @Override
         public void call(final Object... args) {
             runOnUiThread(new Runnable() {
@@ -720,6 +748,322 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             });
         }
     };
+
+    private void addRoutePosition(LatLng latLng) {
+        if (uiState == 4) { // Turbo
+            if (routePositions.size() == 2) { // se já tem 2 pontos não pode adicionar mais um
+                Toast.makeText(getApplicationContext(), "Escolha apenas um destino.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            Player player = game.getPlayer(mPlayerId);
+            int maxDist = player.energy * TURBO_MAX_DIST;
+            double dist = SphericalUtil.computeDistanceBetween(player.position, latLng);
+            if ( dist > maxDist ) {
+                Toast.makeText(getApplicationContext(), "Erro: Distância maior que a permitida.", Toast.LENGTH_LONG).show();
+                return;
+            }
+        }
+        routePositions.add(latLng);
+        if (routePositions.size() < 2) return; // só traça a polylinha do 2o ponto em diante
+        if (routePolyline != null)
+            routePolyline.remove();
+        int lineW = Math.round(7*metrics.density);
+        int pointW = Math.round(16*metrics.density);
+        routePolyline = mMap.addPolyline(
+                new PolylineOptions()
+                        .width(lineW)
+                        .color(0xCC3B7AC9)
+                        .jointType(JointType.ROUND)
+                        .endCap(new CustomCap(BitmapDescriptorFactory.fromResource(R.drawable.point),pointW))
+                        .addAll(routePositions)
+        );
+    }
+
+    private String encodeRoute() {
+        JSONArray legArray = new JSONArray();
+        try {
+            for (int i = 0; i < routePositions.size()-1; i++) {
+                JSONObject start = new JSONObject();
+                start.put("lat", routePositions.get(i).latitude);
+                start.put("lng", routePositions.get(i).longitude);
+                JSONObject end = new JSONObject();
+                end.put("lat", routePositions.get(i+1).latitude);
+                end.put("lng", routePositions.get(i+1).longitude);
+                JSONObject legObject = new JSONObject();
+                legObject.put("start", start);
+                legObject.put("end", end);
+                legArray.put(legObject);
+            }
+
+        } catch (Exception e) {
+            Log.e("game", Log.getStackTraceString(e));
+        }
+        return legArray.toString();
+    }
+
+    private void goSpawnState() {
+        CameraPosition cameraPosition = new CameraPosition.Builder()
+                .target(mPosition)
+                .zoom(13)
+                .tilt(0)
+                .build();
+        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+        if (spawnLimitUI != null)
+            spawnLimitUI.remove();
+        spawnLimitUI = mMap.addCircle(new CircleOptions()
+                .center(mPosition)
+                .radius(SPAWN_AREA) // In meters
+                .fillColor(0x11000000)
+                .strokeColor(0xFF333333)
+                .strokeWidth(1*metrics.density));
+        changeUIState(1);
+    }
+
+    public void onBtnGoClick(View v) {
+        if (!isLoggedIn) return;
+        Player player = game.getPlayer(mPlayerId);
+        player.showOriginMarker();
+        changeUIState(3);
+        addRoutePosition(player.position);
+    }
+
+    public void onBtnTurboClick(View v) {
+        if (!isLoggedIn) return;
+        Player player = game.getPlayer(mPlayerId);
+        player.showOriginMarker();
+        player.drawTurboLimit();
+        changeUIState(4);
+        addRoutePosition(player.position);
+    }
+
+    public void onBtnBombClick(View v) {
+        if (!isLoggedIn) return;
+        Player player = game.getPlayer(mPlayerId);
+        if ( (player.energy - BOMB_UNIT_COST) < START_ENERGY ) {
+            Toast.makeText(getApplicationContext(), "Energia insuficiente", Toast.LENGTH_LONG).show();
+            return;
+        }
+        player.drawBombLimit();
+        player.showOriginMarker();
+        changeUIState(5);
+    }
+
+    public void onBtnOkClick(View v) {
+        switch (uiState) {
+            case 3: // go
+                finishGo(v);
+                break;
+            case 4: // turbo
+                finishTurbo();
+                break;
+        }
+    }
+
+    public void onBtnCancelClick(View v) {
+        switch (uiState) {
+            case 3: // go
+                cancelGoAndTurbo(v);
+                break;
+            case 4: // turbo
+                cancelGoAndTurbo(v);
+                break;
+            case 5: // bomb
+                cancelBomb(v);
+                break;
+        }
+    }
+
+    public void onBtnStopClick(View v) {
+        Player player = game.getPlayer(mPlayerId);
+        player.stop(player.position);
+        mSocket.emit("stop", player.position.latitude, player.position.longitude);
+        changeUIState(2);
+    }
+
+    public void finishSpawn(LatLng latLng) {
+        double dist = SphericalUtil.computeDistanceBetween(mPosition, latLng);
+        if ( dist > SPAWN_AREA ) {
+            Toast.makeText(getApplicationContext(), "Erro: Distância maior que a permitida.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        mSocket.emit("spawn", latLng.latitude, latLng.longitude);
+        if (spawnLimitUI != null) {
+            spawnLimitUI.remove();
+            spawnLimitUI = null;
+        }
+        changeUIState(2);
+    }
+
+    public void finishGo(View v) {
+        if (routePositions.size() < 2) {
+            Toast.makeText(getApplicationContext(), "Escolha pelo menos um local.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (routePositions.size() > 10) {
+            Toast.makeText(getApplicationContext(), "Erro: Muitos trechos.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        mSocket.emit("move", "normal", encodeRoute());
+        Player player = game.getPlayer(mPlayerId);
+        player.refreshIcon();
+        if (routePolyline != null)
+            routePolyline.remove();
+        routePositions.clear();
+        //setBtnGoDelayed(WAIT_AFTER_LEG);
+        //setBtnTurboDelayed(WAIT_AFTER_LEG);
+        changeUIState(6);
+    }
+
+    public void finishTurbo() {
+        if (routePositions.size() < 2) {
+            Toast.makeText(getApplicationContext(), "Escolha um local.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        mSocket.emit("move", "turbo", encodeRoute());
+        Player player = game.getPlayer(mPlayerId);
+        player.refreshIcon();
+        player.clearTurboLimit();
+        if (routePolyline != null)
+            routePolyline.remove();
+        routePositions.clear();
+        changeUIState(6);
+    }
+
+    public void finishBomb(LatLng latLng) {
+        Player player = game.getPlayer(mPlayerId);
+        int maxDist = player.energy * BOMB_MAX_DIST;
+        double dist = SphericalUtil.computeDistanceBetween(player.position, latLng);
+        if ( dist > maxDist ) {
+            Toast.makeText(getApplicationContext(), "Erro: Distância maior que a permitida.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        mSocket.emit("throwBomb", latLng.latitude, latLng.longitude);
+        player.clearBombLimit();
+        player.refreshIcon();
+        setBtnBombDelayed(WAIT_AFTER_BOMB);
+        changeUIState(2);
+    }
+
+    public void cancelGoAndTurbo(View v) {
+        Player player = game.getPlayer(mPlayerId);
+        player.clearTurboLimit();
+        player.refreshIcon();
+        routePositions.clear();
+        if (routePolyline != null)
+            routePolyline.remove();
+        changeUIState(2);
+    }
+
+    public void cancelBomb(View v) {
+        Player player = game.getPlayer(mPlayerId);
+        player.refreshIcon();
+        player.clearBombLimit();
+        changeUIState(2);
+    }
+
+    public void changeUIState(int state) {
+        uiState = state;
+        msg.setVisibility(View.GONE);
+        alert.setVisibility(View.GONE);
+        ranking.setVisibility(View.GONE);
+        findViewById(R.id.btnBomb).setVisibility(View.GONE);
+        findViewById(R.id.btnTurbo).setVisibility(View.GONE);
+        findViewById(R.id.btnGo).setVisibility(View.GONE);
+        findViewById(R.id.btnOk).setVisibility(View.GONE);
+        findViewById(R.id.btnCancel).setVisibility(View.GONE);
+        findViewById(R.id.btnStop).setVisibility(View.GONE);
+
+        switch (state) {
+            case 0: // connect
+                alert.setText("Conectando...");
+                alert.setVisibility(View.VISIBLE);
+                break;
+            case 1: // spawn
+                msg.setText("Clique no mapa para iniciar.");
+                msg.setVisibility(View.VISIBLE);
+                ranking.setVisibility(View.VISIBLE);
+                break;
+            case 2: // main
+                Player player = game.getPlayer(mPlayerId);
+                if ( (player.energy - BOMB_UNIT_COST) >= START_ENERGY )
+                    findViewById(R.id.btnBomb).setVisibility(View.VISIBLE);
+                if ( player.energy >= START_ENERGY * 2 )
+                    findViewById(R.id.btnTurbo).setVisibility(View.VISIBLE);
+                findViewById(R.id.btnGo).setVisibility(View.VISIBLE);
+                ranking.setVisibility(View.VISIBLE);
+                break;
+            case 3: // go
+                msg.setText("Monte uma rota.");
+                msg.setVisibility(View.VISIBLE);
+                findViewById(R.id.btnOk).setVisibility(View.VISIBLE);
+                findViewById(R.id.btnCancel).setVisibility(View.VISIBLE);
+                break;
+            case 4: // turbo
+                msg.setText("Clique dentro do limite.");
+                msg.setVisibility(View.VISIBLE);
+                findViewById(R.id.btnOk).setVisibility(View.VISIBLE);
+                findViewById(R.id.btnCancel).setVisibility(View.VISIBLE);
+                break;
+            case 5: // bomb
+                msg.setText("Clique dentro do limite.");
+                msg.setVisibility(View.VISIBLE);
+                findViewById(R.id.btnCancel).setVisibility(View.VISIBLE);
+                break;
+            case 6: // moving
+                ranking.setVisibility(View.VISIBLE);
+                findViewById(R.id.btnStop).setVisibility(View.VISIBLE);
+                break;
+        }
+
+    }
+
+    public void setBtnGoDelayed(int mili) {
+        final Button btnGo = (Button) findViewById(R.id.btnGo);
+        btnGo.setAlpha(0.5f);
+        btnGo.setClickable(false);
+        new CountDownTimer(mili, 1000) {
+            public void onTick(long millisUntilFinished) {
+                btnGo.setText(millisUntilFinished / 1000 + "s");
+            }
+            public void onFinish() {
+                btnGo.setText("Go");
+                btnGo.setAlpha(1.0f);
+                btnGo.setClickable(true);
+            }
+        }.start();
+    }
+
+    public void setBtnTurboDelayed(int mili) {
+        final Button btnTurbo = (Button) findViewById(R.id.btnTurbo);
+        btnTurbo.setAlpha(0.5f);
+        btnTurbo.setClickable(false);
+        new CountDownTimer(mili, 1000) {
+            public void onTick(long millisUntilFinished) {
+                btnTurbo.setText(millisUntilFinished / 1000 + "s");
+            }
+            public void onFinish() {
+                btnTurbo.setText("Turbo");
+                btnTurbo.setAlpha(1.0f);
+                btnTurbo.setClickable(true);
+            }
+        }.start();
+    }
+
+    public void setBtnBombDelayed(int mili) {
+        final Button btnBomb = (Button) findViewById(R.id.btnBomb);
+        btnBomb.setAlpha(0.5f);
+        btnBomb.setClickable(false);
+        new CountDownTimer(mili, 1000) {
+            public void onTick(long millisUntilFinished) {
+                btnBomb.setText(millisUntilFinished / 1000 + "s");
+            }
+            public void onFinish() {
+                btnBomb.setText("Bomb");
+                btnBomb.setAlpha(1f);
+                btnBomb.setClickable(true);
+            }
+        }.start();
+    }
 
     private void initMap() {
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
@@ -742,61 +1086,92 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                     @Override
                     public void onSuccess(Location location) {
                         if (location != null) {
-                            mLatLng = new LatLng(location.getLatitude(), location.getLongitude());
-
+                            mPosition = new LatLng(location.getLatitude(), location.getLongitude());
                             enterGame();
                         }
                     }
                 });
-
     }
 
-    public void drawSpawnLimit() {
-        if (spawnLimitUI != null)
-            spawnLimitUI.remove();
-        spawnLimitUI = mMap.addCircle(new CircleOptions()
-                .center(mLatLng)
-                .radius(SPAWN_AREA) // In meters
-                .fillColor(0x11000000)
-                .strokeColor(0xFF333333)
-                .strokeWidth(1*metrics.density));
-    }
-
-    public void clearSpawnLimit() {
-        if (spawnLimitUI != null) {
-            spawnLimitUI.remove();
-            spawnLimitUI = null;
+    @Override
+    public void onMapClick(LatLng latLng) {
+        Log.e("game", "onMapClick");
+        switch (uiState) {
+            case 1:
+                finishSpawn(latLng);
+                break;
+            case 3:
+                addRoutePosition(latLng);
+                break;
+            case 4:
+                addRoutePosition(latLng);
+                break;
+            case 5:
+                finishBomb(latLng);
+                break;
         }
     }
-    private void goSpawnState() {
-        findViewById(R.id.btnStartRoute).setVisibility(View.GONE);
-        findViewById(R.id.btnThrowBomb).setVisibility(View.GONE);
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mLatLng, 10f));
-        CameraPosition cameraPosition = new CameraPosition.Builder()
-                .target(mLatLng)
-                .zoom(13)
-                .tilt(60)
-                .build();
-        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
 
-        drawSpawnLimit();
-        userState = "spawning";
-        msg.setText("Clique na área indicada para iniciar.");
-        msg.setVisibility(View.VISIBLE);
-        ranking.setVisibility(View.GONE);
+    @Override
+    public boolean onMarkerClick(final Marker marker) {
+        Log.e("game", "onMarkerClick");
+        String tag = (String) marker.getTag();
+        String[] list = tag.split(":");
+        String type = list[0];
+        int id = Integer.parseInt(list[1]);
+        LatLng latLng = null;
+        switch (type) {
+            case "Player":
+                Player player = game.getPlayer(id);
+                latLng = player.position;
+                break;
+            case "Food":
+                Food food = game.getFood(id);
+                latLng = food.position;
+                break;
+            case "Bomb":
+                Bomb bomb = game.getBomb(id);
+                latLng = bomb.position;
+                break;
+            case "Flag":
+                Flag flag = game.getFlag(id);
+                latLng = flag.position;
+                break;
+        }
+        if (uiState == 1)
+            finishSpawn(latLng);
+        if (uiState == 3)
+            addRoutePosition(latLng);
+        if (uiState == 4)
+            addRoutePosition(latLng);
+        if (uiState == 5)
+            finishBomb(latLng);
+        return true; // Event consumed! This avoid default behavior (info window, etc)
     }
 
-    public void finishSpawn(LatLng latLng) {
-        double dist = SphericalUtil.computeDistanceBetween(new LatLng(mLatLng.latitude, mLatLng.longitude), latLng);
-        if ( dist > SPAWN_AREA ) {
-            Toast.makeText(getApplicationContext(), "Erro: Distância maior que a permitida.", Toast.LENGTH_LONG).show();
-            return;
+    @Override
+    public void onCameraMove() {
+        // Reage ao onCameraMove apenas após ter parado de mexer no zoom
+        Runnable onZoomChangeDelayed = new Runnable() {
+            public void run() {
+                checkPlayerListVisibility();
+                for (Flag flag: game.flagList)
+                    flag.marker.setVisible(isMarkerVisible(flag.type, flag.points));
+                for (Food food: game.foodList)
+                    food.marker.setVisible(isMarkerVisible("food", food.energy));
+                for (Bomb bomb: game.bombList)
+                    bomb.marker.setVisible(isMarkerVisible("bomb", bomb.energy));
+            }
+        };
+
+        float zoom =  mMap.getCameraPosition().zoom;
+        if (zoom == previousZoomLevel) return;
+        previousZoomLevel = zoom;
+        if (zoomHandler != null) {
+            zoomHandler.removeCallbacksAndMessages(null);
         }
-        mSocket.emit("spawn", latLng.latitude, latLng.longitude);
-        clearSpawnLimit();
-        msg.setVisibility(View.GONE);
-        ranking.setVisibility(View.VISIBLE);
-        userState = "";
+        zoomHandler = new Handler();
+        zoomHandler.postDelayed(onZoomChangeDelayed, 100);
     }
 
     public void checkPlayerListVisibility() {
@@ -830,426 +1205,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         }
         // Player, Food, Bomb
         return checkVisibility(4, 13, 10, 5000, value);
-    }
-
-    @Override
-    public void onCameraMove() {
-        // Reage ao onCameraMove apenas após ter parado de mexer no zoom
-        Runnable onZoomChangeDelayed = new Runnable() {
-            public void run() {
-                checkPlayerListVisibility();
-                for (Flag flag: game.flagList)
-                    flag.marker.setVisible(isMarkerVisible(flag.type, flag.points));
-                for (Food food: game.foodList)
-                    food.marker.setVisible(isMarkerVisible("food", food.energy));
-                for (Bomb bomb: game.bombList)
-                    bomb.marker.setVisible(isMarkerVisible("bomb", bomb.energy));
-            }
-        };
-
-        float zoom =  mMap.getCameraPosition().zoom;
-        if (zoom == previousZoomLevel) return;
-        previousZoomLevel = zoom;
-        if (zoomHandler != null) {
-            zoomHandler.removeCallbacksAndMessages(null);
-        }
-        zoomHandler = new Handler();
-        zoomHandler.postDelayed(onZoomChangeDelayed, 100);
-
-
-/*
-        // tenta setar a stroke conforme o zoom, mas dá negativo se o mapa está rotacionado...
-        Projection projection = mMap.getProjection();
-        for (Player player : game.playerList) {
-            if (player.energyUI == null) continue;
-            LatLng newLatLng = SphericalUtil.computeOffset(player.energyUI.getCenter(), 1200, 270);
-            double latDif = player.energyUI.getCenter().latitude - newLatLng.latitude;
-            double lngDif = player.energyUI.getCenter().longitude - newLatLng.longitude;
-            //status.setText("lat: " + latDif + " lng: " + lngDif);
-            Point p1 = projection.toScreenLocation(player.energyUI.getCenter());
-            Point p2 = projection.toScreenLocation(newLatLng);
-            player.energyUI.setStrokeWidth(p1.y - p2.y);
-            }
-*/
-
-    }
-
-    private GeoApiContext getGeoContext() {
-        GeoApiContext geoApiContext = new GeoApiContext();
-        return geoApiContext.setQueryRateLimit(50)
-                .setApiKey("AIzaSyDF8VQrY6wyQaF3d9uAzkn4fZZYWqs44_M")
-                .setConnectTimeout(10, TimeUnit.SECONDS)
-                .setReadTimeout(10, TimeUnit.SECONDS)
-                .setWriteTimeout(10, TimeUnit.SECONDS);
-    }
-
-    private String encodeRoute(DirectionsResult result) {
-        JSONArray legArray = new JSONArray();
-        try {
-            for (int i = 0; i < routeLocations.size()-1; i++) {
-                JSONArray pointArray = new JSONArray();
-                JSONObject pointObject = new JSONObject();
-                pointObject.put("lat", routeLocations.get(i).latitude);
-                pointObject.put("lng", routeLocations.get(i).longitude);
-                pointArray.put(pointObject);
-
-                if (result != null) {
-                    DirectionsLeg leg = result.routes[0].legs[i];
-                    for (int j = 0; j < leg.steps.length; j++) {
-                        DirectionsStep step = leg.steps[j];
-                        List<com.google.maps.model.LatLng> polyline = step.polyline.decodePath();
-                        for (int k = 0; k < polyline.size(); k++) {
-                            pointObject = new JSONObject();
-                            pointObject.put("lat", polyline.get(k).lat);
-                            pointObject.put("lng", polyline.get(k).lng);
-                            pointArray.put(pointObject);
-                        }
-                    }
-                }
-
-                pointObject = new JSONObject();
-                pointObject.put("lat", routeLocations.get(i+1).latitude);
-                pointObject.put("lng", routeLocations.get(i+1).longitude);
-                pointArray.put(pointObject);
-
-                JSONObject legObject = new JSONObject();
-                legObject.put("pointList", pointArray);
-                legArray.put(legObject);
-            }
-
-        } catch (Exception e) {
-            Log.e("game", Log.getStackTraceString(e));
-        }
-        return legArray.toString();
-    }
-
-    private void addRouteLocation(LatLng latLng) {
-        routeLocations.add(latLng);
-        Player player = game.getPlayer(mPlayerId);
-        player.marker.setVisible(false);
-        int totalRouteDistance = getTotalRouteDistance();
-        int energyToGo = player.energy - (routeLocations.size() * DIRECT_UNIT_COST) - START_ENERGY;
-        int maxDist = energyToGo * DIRECT_MAX_DIST;
-        Log.e("game", "e: " + player.energy + " tRD: " + totalRouteDistance + " u: " + (routeLocations.size() * DIRECT_UNIT_COST) + " eTG: " + energyToGo + " mD: " + maxDist);
-        maxDist -= totalRouteDistance;
-        Log.e("game", "mD: " + maxDist);
-        if ( maxDist <= 0 ) {
-            player.clearDirectLimit();
-            findViewById(R.id.btnDirect).setVisibility(View.GONE);
-        } else {
-            player.drawDirectLimit(latLng, routeLocations.size(), totalRouteDistance);
-            findViewById(R.id.btnDirect).setVisibility(View.VISIBLE);
-        }
-        if (routeLocations.size() < 2) return;
-        if (routePolyline != null)
-            routePolyline.remove();
-        routePolyline = mMap.addPolyline(
-                new PolylineOptions()
-                        .width(8*metrics.density)
-                        .color(0xCC3B7AC9)
-                        .jointType(JointType.ROUND)
-                        .endCap(new CustomCap(BitmapDescriptorFactory.fromResource(R.drawable.arrow),8*metrics.density))
-                        .addAll(routeLocations)
-        );
-    }
-
-    @Override
-    public void onMapClick(LatLng latLng) {
-        Log.e("game", "onMapClick");
-        switch (userState) {
-            case "spawning":
-                finishSpawn(latLng);
-                break;
-            case "buildingRoute":
-                addRouteLocation(latLng);
-                break;
-            case "throwingBomb":
-                finishThrowBomb(latLng);
-                break;
-        }
-    }
-
-    @Override
-    public boolean onMarkerClick(final Marker marker) {
-        Log.e("game", "onMarkerClick");
-        String tag = (String) marker.getTag();
-        String[] list = tag.split(":");
-        String type = list[0];
-        int id = Integer.parseInt(list[1]);
-        LatLng latLng = null;
-        switch (type) {
-            case "Player":
-                Player player = game.getPlayer(id);
-                latLng = new LatLng(player.lat, player.lng);
-                break;
-            case "Food":
-                Food food = game.getFood(id);
-                latLng = new LatLng(food.lat, food.lng);
-                break;
-            case "Bomb":
-                Bomb bomb = game.getBomb(id);
-                latLng = new LatLng(bomb.lat, bomb.lng);
-                break;
-            case "Flag":
-                Flag flag = game.getFlag(id);
-                latLng = new LatLng(flag.lat, flag.lng);
-                break;
-/*
-            case "EnergyBall":
-                EnergyBall energyBall = game.getEnergyBall(id);
-                latLng = new LatLng(energyBall.lat, energyBall.lng);
-                break;
-*/
-        }
-        if (userState.equals("buildingRoute"))
-            addRouteLocation(latLng);
-        if (userState.equals("throwingBomb"))
-            finishThrowBomb(latLng);
-        if (userState.equals("spawning"))
-            finishSpawn(latLng);
-        return true; // Event consumed! This avoid default behavior (info window, etc)
-    }
-
-
-    public void startRoute(View v) {
-        if (!isLoggedIn) return;
-        findViewById(R.id.btnStartRoute).setVisibility(View.GONE);
-        findViewById(R.id.btnThrowBomb).setVisibility(View.GONE);
-        findViewById(R.id.btnDirect).setVisibility(View.VISIBLE);
-        findViewById(R.id.btnNormal).setVisibility(View.VISIBLE);
-        findViewById(R.id.btnCancel).setVisibility(View.VISIBLE);
-        Player player = game.getPlayer(mPlayerId);
-        addRouteLocation(new LatLng(player.lat, player.lng));
-        msg.setText("Monte uma rota.");
-        msg.setVisibility(View.VISIBLE);
-        ranking.setVisibility(View.GONE);
-        userState = "buildingRoute";
-    }
-
-    public void cancelRoute(View v) {
-        if (v != null) { // acionado pelo botão
-            Player player = game.getPlayer(mPlayerId);
-            player.marker.setVisible(true);
-            player.clearDirectLimit();
-        }
-        Button btnDirect = (Button) findViewById(R.id.btnDirect);
-        btnDirect.setAlpha(1.0f);
-        btnDirect.setClickable(true);
-        btnDirect.setVisibility(View.GONE);
-
-        findViewById(R.id.btnNormal).setVisibility(View.GONE);
-        findViewById(R.id.btnCancel).setVisibility(View.GONE);
-        findViewById(R.id.btnStartRoute).setVisibility(View.VISIBLE);
-        findViewById(R.id.btnThrowBomb).setVisibility(View.VISIBLE);
-        routeLocations.clear();
-        if (routePolyline != null)
-            routePolyline.remove();
-        msg.setVisibility(View.GONE);
-        ranking.setVisibility(View.VISIBLE);
-        userState = "";
-    }
-
-    public void finishDirectRoute(View v) {
-        finishRoute("direct");
-    }
-
-    public void finishNormalRoute(View v) {
-        finishRoute("normal");
-    }
-
-    public boolean checkResultStatusOk(DirectionsResult result) {
-        for (int i = 0; i < result.geocodedWaypoints.length; i++) {
-            if (result.geocodedWaypoints[i].geocoderStatus != GeocodedWaypointStatus.OK)
-                return false;
-        }
-        return true;
-    }
-
-    public int getTotalRouteDistance() {
-        int totalDistance = 0;
-        for (int i = 0; i < routeLocations.size()-1; i++) {
-            LatLng latLngFrom = new LatLng(routeLocations.get(i).latitude, routeLocations.get(i).longitude);
-            LatLng latLngTo = new LatLng(routeLocations.get(i+1).latitude, routeLocations.get(i+1).longitude);
-            totalDistance += SphericalUtil.computeDistanceBetween(latLngFrom, latLngTo);
-        }
-        return totalDistance;
-    }
-
-    public void finishRoute(String type) {
-        if (!userState.equals("buildingRoute")) return;
-        if (routeLocations.size() < 2) return;
-        userState = "";
-        msg.setText("Calculando rota...");
-        Player player = game.getPlayer(mPlayerId);
-
-        switch (type) {
-            case "direct":
-                int totalRouteDistance = getTotalRouteDistance();
-                int energyToGo = player.energy - ((routeLocations.size()-1) * DIRECT_UNIT_COST) - START_ENERGY;
-                int maxDist = energyToGo * DIRECT_MAX_DIST;
-                Log.e("game", "e: " + player.energy + " tRD: " + totalRouteDistance + " u: " + (routeLocations.size() * DIRECT_UNIT_COST) + " eTG: " + energyToGo + " mD: " + maxDist);
-                if ( totalRouteDistance <= maxDist ) {
-                    mSocket.emit("move", type, encodeRoute(null), routeLocations.size()-1, totalRouteDistance);
-                    break;
-                } else {
-                    Toast.makeText(getApplicationContext(), "Erro: Energia insuficiente para rota direta.", Toast.LENGTH_LONG).show();
-                    userState = "buildingRoute";
-                    return;
-                }
-            case "normal":
-                try {
-                    if (routeLocations.size() > 10) {
-                        Toast.makeText(getApplicationContext(), "Erro: Muitos pontos de parada.", Toast.LENGTH_LONG).show();
-                        userState = "buildingRoute";
-                        return;
-                    }
-                    if (getTotalRouteDistance() > DRIVING_MAX_DIST) {
-                        Toast.makeText(getApplicationContext(), "Erro: Rota normal maior que " + (DRIVING_MAX_DIST/1000) + " km.", Toast.LENGTH_LONG).show();
-                        userState = "buildingRoute";
-                        return;
-                    }
-
-                    List<String> wayPointList = new ArrayList<String>();
-                    for (int i = 1; i < routeLocations.size()-1; i++)
-                        wayPointList.add(routeLocations.get(i).latitude + "," + routeLocations.get(i).longitude);
-                    DirectionsResult result = DirectionsApi.newRequest(getGeoContext())
-                            .mode(TravelMode.DRIVING)
-                            .origin(new com.google.maps.model.LatLng(routeLocations.get(0).latitude, routeLocations.get(0).longitude))
-                            .destination(new com.google.maps.model.LatLng(routeLocations.get(routeLocations.size()-1).latitude, routeLocations.get(routeLocations.size()-1).longitude))
-                            //.waypoints("-18.945003995554103,-48.2798021659255|-18.93697,-48.28301")
-                            .waypoints(android.text.TextUtils.join("|", wayPointList))
-                            .await();
-                    if (checkResultStatusOk(result)) {
-                        mSocket.emit("move", type, encodeRoute(result));
-                    } else {
-                        Toast.makeText(getApplicationContext(), "Erro calculando a rota", Toast.LENGTH_LONG).show();
-                        userState = "buildingRoute";
-                        return;
-                    }
-
-                    //long dist = result.routes[0].legs[0].distance.inMeters;
-                    //List<LatLng> decodedPath = PolyUtil.decode(result.routes[0].overviewPolyline.getEncodedPath());
-                } catch (Exception e) { Log.e("game", Log.getStackTraceString(e)); }
-                break;
-        }
-
-        player.marker.setVisible(true);
-        player.clearDirectLimit();
-        if (routePolyline != null)
-            routePolyline.remove();
-        routeLocations.clear();
-        Button btnDirect = (Button) findViewById(R.id.btnDirect);
-        btnDirect.setAlpha(1.0f);
-        btnDirect.setClickable(true);
-        btnDirect.setVisibility(View.GONE);
-        findViewById(R.id.btnNormal).setVisibility(View.GONE);
-        findViewById(R.id.btnCancel).setVisibility(View.GONE);
-        findViewById(R.id.btnStopPlayer).setVisibility(View.VISIBLE);
-        msg.setVisibility(View.GONE);
-        ranking.setVisibility(View.VISIBLE);
-    }
-
-    public void startThrowBomb(View v) {
-        if (!isLoggedIn) return;
-        Player player = game.getPlayer(mPlayerId);
-        if ( (player.energy - BOMB_UNIT_COST) < START_ENERGY ) {
-            Toast.makeText(getApplicationContext(), "Energia insuficiente", Toast.LENGTH_LONG).show();
-            return;
-        }
-        player.drawBombLimit();
-        player.marker.setVisible(false);
-        findViewById(R.id.btnStartRoute).setVisibility(View.GONE);
-        findViewById(R.id.btnThrowBomb).setVisibility(View.GONE);
-        findViewById(R.id.btnThrowBombCancel).setVisibility(View.VISIBLE);
-        msg.setText("Clique dentro do limite.");
-        msg.setVisibility(View.VISIBLE);
-        ranking.setVisibility(View.GONE);
-        userState = "throwingBomb";
-    }
-
-    public void cancelThrowBomb(View v) {
-        Player player = game.getPlayer(mPlayerId);
-        player.clearBombLimit();
-        findViewById(R.id.btnThrowBombCancel).setVisibility(View.GONE);
-        findViewById(R.id.btnStartRoute).setVisibility(View.VISIBLE);
-        findViewById(R.id.btnThrowBomb).setVisibility(View.VISIBLE);
-        msg.setVisibility(View.GONE);
-        ranking.setVisibility(View.VISIBLE);
-        userState = "";
-    }
-
-    public void finishThrowBomb(LatLng latLng) {
-        Player player = game.getPlayer(mPlayerId);
-        int maxDist = (player.energy - BOMB_UNIT_COST - START_ENERGY) * BOMB_MAX_DIST;
-        double dist = SphericalUtil.computeDistanceBetween(new LatLng(player.lat, player.lng), latLng);
-        if ( dist <= maxDist ) {
-            mSocket.emit("throwBomb", latLng.latitude, latLng.longitude);
-        } else {
-            Toast.makeText(getApplicationContext(), "Erro: Distância maior que a permitida.", Toast.LENGTH_LONG).show();
-        }
-        player.clearBombLimit();
-        player.marker.setVisible(true);
-        msg.setVisibility(View.GONE);
-        findViewById(R.id.btnThrowBombCancel).setVisibility(View.GONE);
-        findViewById(R.id.btnStartRoute).setVisibility(View.VISIBLE);
-        findViewById(R.id.btnThrowBomb).setVisibility(View.VISIBLE);
-        msg.setVisibility(View.GONE);
-        ranking.setVisibility(View.VISIBLE);
-        userState = "";
-    }
-
-    public void stopPlayer(View v) {
-        Player player = game.getPlayer(mPlayerId);
-        findViewById(R.id.btnStopPlayer).setVisibility(View.GONE);
-        //findViewById(R.id.btnStartRoute).setVisibility(View.VISIBLE);
-        showBtnStartRouteDelayed(WAIT_AFTER_LEG);
-        findViewById(R.id.btnThrowBomb).setVisibility(View.VISIBLE);
-        player.stop(player.lat, player.lng);
-        mSocket.emit("stop", player.lat, player.lng);
-        userState = "";
-    }
-
-    public void showBtnStartRouteDelayed(int mili) {
-        final Button btnStartRoute = (Button) findViewById(R.id.btnStartRoute);
-        btnStartRoute.setAlpha(0.5f);
-        btnStartRoute.setClickable(false);
-        btnStartRoute.setVisibility(View.VISIBLE);
-        new CountDownTimer(mili, 1000) {
-            public void onTick(long millisUntilFinished) {
-                btnStartRoute.setText(millisUntilFinished / 1000 + "s");
-            }
-            public void onFinish() {
-                btnStartRoute.setText("+");
-                btnStartRoute.setAlpha(1.0f);
-                btnStartRoute.setClickable(true);
-            }
-        }.start();
-    }
-
-    public void showBtnThrowBombDelayed(int mili) {
-        final Button btnThrowBomb = (Button) findViewById(R.id.btnThrowBomb);
-        btnThrowBomb.setAlpha(0.5f);
-        btnThrowBomb.setClickable(false);
-        btnThrowBomb.setVisibility(View.VISIBLE);
-        new CountDownTimer(mili, 1000) {
-            public void onTick(long millisUntilFinished) {
-                btnThrowBomb.setText(millisUntilFinished / 1000 + "s");
-            }
-            public void onFinish() {
-                btnThrowBomb.setText("Bomb");
-                btnThrowBomb.setAlpha(1f);
-                btnThrowBomb.setClickable(true);
-            }
-        }.start();
-    }
-
-    public void tryConnectAgain(int mili) {
-        new CountDownTimer(mili, 0) {
-            public void onTick(long millisUntilFinished) {}
-            public void onFinish() {
-                enterGame();
-            }
-        }.start();
     }
 
 }

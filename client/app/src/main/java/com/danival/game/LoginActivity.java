@@ -83,12 +83,14 @@ public class LoginActivity extends Activity {
         super.onResume();
         app.setTag(1);
 
+/*
         // AUTO LOGIN
         Intent intent = new Intent();
         intent.putExtra("mPlayerName", "Danival");
         intent.putExtra("mEmoji", 0);
         setResult(RESULT_OK, intent);
         finish();
+*/
     }
 
     @Override

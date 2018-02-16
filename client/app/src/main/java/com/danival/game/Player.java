@@ -20,12 +20,16 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
+import com.google.android.gms.maps.model.Dash;
+import com.google.android.gms.maps.model.Dot;
+import com.google.android.gms.maps.model.Gap;
 import com.google.android.gms.maps.model.GroundOverlay;
 import com.google.android.gms.maps.model.GroundOverlayOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.PatternItem;
 import com.google.android.gms.maps.model.PolygonOptions;
 
 import org.json.JSONArray;
@@ -33,6 +37,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 
@@ -43,29 +48,30 @@ public class Player {
     public int emoji;
     public boolean onLine;
     public String status;
-    public double lat;
-    public double lng;
+    public LatLng position;
     public int energy;
+    public int energyToRestore;
     public double flagPoints;
     public List<RouteLeg> legList;
     public Circle energyUI;
+    public Circle energyToRestoreUI;
     public Circle bombLimitUI;
-    public Circle directLimitUI;
+    public Circle turboLimitUI;
     public Marker marker;
-    public GroundOverlay label;
+    //public GroundOverlay label;
     private ColorMatrix colorMatrix;
     private ColorMatrixColorFilter colorFilter;
 
-    public Player(MainActivity context, int _id, String _name, int _emoji, boolean _onLine, String _status, double _lat, double _lng, int _energy, double _flagPoints) {
+    public Player(MainActivity context, int _id, String _name, int _emoji, boolean _onLine, String _status, LatLng _position, int _energy, double _flagPoints, int _energyToRestore) {
         main = context;
         id = _id;
         name = _name;
         emoji = _emoji;
         onLine = _onLine;
         status = _status;
-        lat = _lat;
-        lng = _lng;
+        position = _position;
         energy = _energy;
+        energyToRestore = _energyToRestore;
         flagPoints = _flagPoints;
         legList = new ArrayList<RouteLeg>();
 
@@ -73,20 +79,20 @@ public class Player {
         colorMatrix.setSaturation(0);
         colorFilter = new ColorMatrixColorFilter(colorMatrix);
     }
-    public void setLocation(double _lat, double _lng) {
-        lat = _lat;
-        lng = _lng;
-        LatLng latLng = new LatLng(lat, lng);
+
+    public void setPosition(LatLng _position) {
+        position = _position;
         if (marker != null) {
-            marker.setPosition(latLng);
+            marker.setPosition(position);
             drawEnergy();
-            drawLabel();
+            //drawLabel();
         }
     }
 
-
     public Bitmap getIconBmp() {
-        Bitmap bmp = Bitmap.createBitmap(300, 340, Bitmap.Config.ARGB_8888);
+        int w = Math.round(75*main.metrics.density);
+        int h = Math.round(85*main.metrics.density);
+        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bmp);
 
         Paint stroke = new Paint();
@@ -109,20 +115,19 @@ public class Player {
         //String emojiIcon = String.format("emoji%03d", emoji+1);
         String emojiIcon = String.format("emoji%03d", Math.max(id*5,1)); // testes!!!
         int resID = main.getResources().getIdentifier(emojiIcon , "drawable", main.getPackageName());
-        canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.marker), 0,60, color);
-        canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 70,80, color);
+        canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.marker), 0,15*main.metrics.density, color);
+        canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), (75.0f/2-40/2)*main.metrics.density,20*main.metrics.density, color);
         //canvas1.drawText(name, 150, 40, color);
-        canvas.drawText("Player " + id, 150, 40, stroke); // testes!!!
-        canvas.drawText("Player " + id, 150, 40, color); // testes!!!
+        canvas.drawText(name, 75.0f/2*main.metrics.density, 10*main.metrics.density, stroke); // testes!!!
+        canvas.drawText(name, 75.0f/2*main.metrics.density, 10*main.metrics.density, color); // testes!!!
         return bmp;
     }
 
     public void drawOnMap(boolean moveCamera) {
         drawEnergy();
-        drawLabel();
-        LatLng latLng = new LatLng(lat, lng);
+        //drawLabel();
         marker = main.mMap.addMarker(new MarkerOptions()
-                .position(latLng)
+                .position(position)
                 .icon(BitmapDescriptorFactory.fromBitmap(getIconBmp()))
                 .alpha(0.7f));
         marker.setTag("Player:"+id);
@@ -131,12 +136,12 @@ public class Player {
         //Log.e("game", "zoom: " + zoom);
         main.game.drawRanking();
         if (moveCamera) {
-            double START_ZOOM = 19;
+            double START_ZOOM = 17;
             double zoom = START_ZOOM - Math.log((float)energy/main.START_ENERGY)/Math.log(2);
             CameraPosition cameraPosition = new CameraPosition.Builder()
-                    .target(latLng)
+                    .target(position)
                     .zoom((float)zoom)
-                    .tilt(60)
+                    .tilt(0)
                     .build();
             main.mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         }
@@ -151,34 +156,50 @@ public class Player {
             energyUI.remove();
             energyUI = null;
         }
+        if (energyToRestoreUI != null) {
+            energyToRestoreUI.remove();
+            energyToRestoreUI = null;
+        }
         if (bombLimitUI != null) {
             bombLimitUI.remove();
             bombLimitUI = null;
         }
-        if (directLimitUI != null) {
-            directLimitUI.remove();
-            directLimitUI = null;
+        if (turboLimitUI != null) {
+            turboLimitUI.remove();
+            turboLimitUI = null;
         }
+/*
         if (label != null) {
             label.remove();
             label = null;
         }
+*/
         clearLegs();
         main.game.drawRanking();
     }
 
     public void drawEnergy() {
-        LatLng latLng = new LatLng(lat, lng);
         if (energyUI != null)
             energyUI.remove();
         energyUI = main.mMap.addCircle(new CircleOptions()
-                .center(latLng)
+                .center(position)
                 .radius(energy) // In meters
                 .fillColor(0x330000FF)
                 .strokeColor(0xAA0000FF)
-                .strokeWidth(4));
+                .strokeWidth(1*main.metrics.density));
+        if (energyToRestoreUI != null)
+            energyToRestoreUI.remove();
+        if (energyToRestore == 0) return;
+        List<PatternItem> pattern = Arrays.<PatternItem>asList(new Dash(8*main.metrics.density), new Gap(4*main.metrics.density));
+        energyToRestoreUI = main.mMap.addCircle(new CircleOptions()
+                .center(position)
+                .radius(energy + energyToRestore) // In meters
+                .strokePattern(pattern)
+                .strokeColor(0xAA0000FF)
+                .strokeWidth(1*main.metrics.density));
     }
 
+/*
     public void drawLabel() {
         LatLng latLng = new LatLng(lat, lng);
         if (label != null)
@@ -201,14 +222,14 @@ public class Player {
                 .image(BitmapDescriptorFactory.fromBitmap(bmpLabel))
                 .position(latLng, (float)energy*2, (float)energy*2));
     }
+*/
 
     public void drawBombLimit() {
-        LatLng latLng = new LatLng(lat, lng);
         if (bombLimitUI != null)
             bombLimitUI.remove();
         bombLimitUI = main.mMap.addCircle(new CircleOptions()
-                .center(latLng)
-                .radius((energy - main.BOMB_UNIT_COST - main.START_ENERGY) * main.BOMB_MAX_DIST) // In meters
+                .center(position)
+                .radius(energy * main.BOMB_MAX_DIST) // In meters
                 .strokeColor(0xFFAAAAAA)
                 .strokeWidth(1*main.metrics.density));
     }
@@ -220,25 +241,20 @@ public class Player {
         }
     }
 
-    public void drawDirectLimit(LatLng latLng, int legCount, int totalRouteDistance) {
-        if (directLimitUI != null)
-            directLimitUI.remove();
-        Log.e("game", "drawDirectLimit");
-        long energyToGo = energy - (legCount * main.DIRECT_UNIT_COST) - main.START_ENERGY;
-        long maxDist = energyToGo * main.DIRECT_MAX_DIST;
-        maxDist -= totalRouteDistance;
-        Log.e("game", "drawDirectLimit - maxDist: " + maxDist);
-        directLimitUI = main.mMap.addCircle(new CircleOptions()
-                .center(latLng)
-                .radius(maxDist) // In meters
+    public void drawTurboLimit() {
+        if (turboLimitUI != null)
+            turboLimitUI.remove();
+        turboLimitUI = main.mMap.addCircle(new CircleOptions()
+                .center(position)
+                .radius(energy * main.TURBO_MAX_DIST) // In meters
                 .strokeColor(0xFFAAAAAA)
                 .strokeWidth(1*main.metrics.density));
     }
 
-    public void clearDirectLimit() {
-        if (directLimitUI != null) {
-            directLimitUI.remove();
-            directLimitUI = null;
+    public void clearTurboLimit() {
+        if (turboLimitUI != null) {
+            turboLimitUI.remove();
+            turboLimitUI = null;
         }
     }
 
@@ -251,17 +267,15 @@ public class Player {
             Log.e("game", "onMove");
             for (int i = 0; i < jsonLegList.length(); i++) {
                 JSONObject jsonLeg = jsonLegList.getJSONObject(i);
-                RouteLeg leg = new RouteLeg();
+                RouteLeg leg = new RouteLeg(main);
                 long endTime = jsonLeg.getLong("endTime");
                 long now = jsonLeg.getLong("now");
                 leg.endTime = endTime + (System.currentTimeMillis() - now); // ajusta os tempos de acordo com o relógio do client
-                leg.totalDuration = jsonLeg.getLong("totalDuration");
-                JSONArray jsonPointList = jsonLeg.getJSONArray("pointList");
-                for (int j = 0; j < jsonPointList.length(); j++) {
-                    JSONObject jsonPoint = jsonPointList.getJSONObject(j);
-                    Point point = new Point(jsonPoint.getDouble("lat"), jsonPoint.getDouble("lng"), jsonPoint.getLong("duration"));
-                    leg.addPoint(point);
-                }
+                leg.duration = jsonLeg.getLong("duration");
+                JSONObject jsonStart = jsonLeg.getJSONObject("start");
+                leg.start = new LatLng(jsonStart.getDouble("lat"), jsonStart.getDouble("lng"));
+                JSONObject jsonEnd = jsonLeg.getJSONObject("end");
+                leg.end = new LatLng(jsonEnd.getDouble("lat"), jsonEnd.getDouble("lng"));
                 legList.add(leg);
             }
         } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
@@ -273,32 +287,33 @@ public class Player {
         // o Animator continuará movendo este player no mapa
     }
 
-    public void drawLegList(int pointIndex) {
-        setLocation(lat, lng);
-        legList.get(0).draw(main, new LatLng(lat, lng), pointIndex);
+    public void drawLegList() {
+        setPosition(position);
+        legList.get(0).draw(position);
         if (id != main.mPlayerId) return; // só desenha as demais legs no player que as criou
         for (int i = 1; i < legList.size(); i++) {
-            legList.get(i).draw(main);
+            legList.get(i).draw();
         }
     }
 
-    public void onLegFinished(String _status, double lat, double lng) {
+    public void onLegFinished(String _status, LatLng _position) {
         status = _status;
-        setLocation(lat, lng);
+        setPosition(_position);
         if (legList.size() > 0)
             legList.get(0).clear();
     }
 
-    public void onEnergyChange(int _energy) {
+    public void onEnergyChange(int _energy, int _energyToRestore) {
         energy = _energy;
+        energyToRestore = _energyToRestore;
         drawEnergy();
-        drawLabel();
+        //drawLabel();
         main.game.drawRanking();
     }
 
     public void onFlagPointsChange(double _flagPoints) {
         flagPoints = _flagPoints;
-        drawLabel();
+        //drawLabel();
         main.game.drawRanking();
     }
 
@@ -308,11 +323,9 @@ public class Player {
         legList.clear();
     }
 
-
-    public void stop(double _lat, double _lng) {
+    public void stop(LatLng _position) {
         status = "in";
-        lat = _lat;
-        lng = _lng;
+        position = _position;
         clearLegs();
     }
 
@@ -323,48 +336,51 @@ public class Player {
         long now = System.currentTimeMillis();
         if (now > leg.endTime) {
             status = "in";
-            Point lastPoint = leg.pointList.get(leg.pointList.size()-1);
-            setLocation(lastPoint.lat, lastPoint.lng);
+            setPosition(leg.end);
             return;
         }
-        long legStart = leg.endTime - leg.totalDuration; // em que miliseg
-        long pos = (now < legStart) ? 0 : now - legStart;
-        int j = 0;
-        Point point1 = leg.pointList.get(j);
-        long sum = point1.duration;
-        while ( (pos > sum) && (j < leg.pointList.size()-1) ) {
-            point1 = leg.pointList.get(++j);
-            sum += point1.duration;
-        }
-        if (pos > sum) {
-            lat = point1.lat;
-            lng = point1.lng;
+        double lat, lng;
+        long startTime = leg.endTime - leg.duration; // em que miliseg
+        long deltaTime = (now < startTime) ? 0 : now - startTime;
+        double percent = deltaTime / (double)leg.duration;
+        lat = leg.start.latitude + (leg.end.latitude - leg.start.latitude) * percent;
+        double deltaLng = Math.abs(leg.end.longitude - leg.start.longitude);
+        if (deltaLng < 180) {
+            lng = leg.start.longitude + (leg.end.longitude - leg.start.longitude) * percent;
         } else {
-            Point point2 = leg.pointList.get(++j);
-            double percent = 1 - ( (sum - pos) / (double)point1.duration );
-            lat = point1.lat + (point2.lat - point1.lat) * percent;
-            double deltaLng = Math.abs(point2.lng - point1.lng);
-            if (deltaLng < 180) {
-                lng = point1.lng + (point2.lng - point1.lng) * percent;
+            double newDeltaLngPercent = (360 - deltaLng) * percent;
+            if (leg.end.longitude > leg.start.longitude) {
+                lng = leg.start.longitude - newDeltaLngPercent;
+                if (lng < -180)
+                    lng = 360 + lng;
             } else {
-                double newDeltaLngPercent = (360 - deltaLng) * percent;
-                if (point2.lng > point1.lng) {
-                    lng = point1.lng - newDeltaLngPercent;
-                    if (lng < -180)
-                        lng = 360 + lng;
-                } else {
-                    lng = point1.lng + newDeltaLngPercent;
-                    if (lng > 180)
-                        lng = lng - 360;
-                }
+                lng = leg.start.longitude + newDeltaLngPercent;
+                if (lng > 180)
+                    lng = lng - 360;
             }
         }
-        drawLegList(j);
+        position = new LatLng(lat, lng);
+        drawLegList();
     }
 
     public void refreshIcon() {
         if (marker == null) return;
         marker.setIcon(BitmapDescriptorFactory.fromBitmap(getIconBmp()));
+        marker.setAnchor(0.5F, 1F);
+        drawEnergy();
+    }
+
+    public void showOriginMarker() {
+        marker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.origin));
+        marker.setAnchor(0.5F, 0.5F);
+        if (energyUI != null) {
+            energyUI.remove();
+            energyUI = null;
+        }
+        if (energyToRestoreUI != null) {
+            energyToRestoreUI.remove();
+            energyToRestoreUI = null;
+        }
     }
 
 
