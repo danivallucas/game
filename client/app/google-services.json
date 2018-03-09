@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "135065853730",
+    "firebase_url": "https://game-3e9fd.firebaseio.com",
+    "project_id": "game-3e9fd",
+    "storage_bucket": "game-3e9fd.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:135065853730:android:1598a567ddbeb0d8",
+        "android_client_info": {
+          "package_name": "com.danival.game"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "135065853730-4mqur51vrk3ao3ei2cdnt03qt8680l9g.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.danival.game",
+            "certificate_hash": "0b62796ea44b0c480acead0554802672fd9908ef"
+          }
+        },
+        {
+          "client_id": "135065853730-9dchbvuki6g3e4hoj1ujsp9rfetrpnca.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8kqHHhsBUigyXGTMexwxeYyYv8CFsjwk"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "135065853730-9dchbvuki6g3e4hoj1ujsp9rfetrpnca.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,7 +1,9 @@
+require('console-stamp')(console, 'HH:MM:ss.l');
 var express = require('express');
 var app = express();
 var server = require('http').createServer(app);
 var io = require('socket.io')(server);
+var gcm = require('node-gcm');
 var port = process.env.PORT || 3000;
 var crypto = require('crypto');
 var base64url = require('base64url');
@@ -9,6 +11,8 @@ var googleMapsClient = require('@google/maps').createClient({ key: 'AIzaSyCdjD_n
 var config = require('./config');
 var flags = require('./flags');
 var tools = require('./tools');
+//var mongoose = require('mongoose');
+//var db = require('./config/db');
 
 const conf = config.generalParams;
 var metersToLat = tools.metersToLat;
@@ -23,12 +27,21 @@ server.listen(port, function () {
 });
 
 app.use(express.static(__dirname + '/public'));
+//db.init();
+
+/*
+var UserSchema = require('./models/userModel');
+var User = mongoose.model('User', UserSchema);
+var user = new User({name: 'user1', username: 'username1'});
+User.find({name: 'user1'}, (err, user) => !!err || console.log(user));
+*/
 
 var playerList = [];
 var foodList = [];
 var bombList = [];
 var energyBallList = [];
 var flagList = flags.flagList;
+var fcmTokenList = [];
 
 // http://www.jstips.co/en/javascript/picking-and-rejecting-object-properties/
 // retorna apenas os campos "keys" do objeto
@@ -316,10 +329,15 @@ function checkMoving() {
     player.lng = leg.end.lng;
     player.status = 'in';
     io.emit('onLegFinished', {id: player.id, status: player.status, lat: player.lat, lng: player.lng, timeToNewRoute: wait});
+
     // remove esta leg e agenda a próxima, se houver
     player.legList.splice(0, 1);
-    if (player.legList.length > 0)
+    if (player.legList.length > 0) {
       player.scheduledMove = setTimeout(function(param){ newScheduledMove(param); }, wait, player); // colocar 1 min ??
+    } else {
+      notify(player, 'Rota concluída', 'Você chegou ao seu destino.');
+    }
+
     // configura uma restauração de energia, se for o caso
     if (player.energyToRestore > 0) { // se tem energia para restaurar é pq foi via "turbo"
       player.timeToRestore = now + wait - 1000; // processa o restore 1seg antes de iniciar um novo trecho automático, ou de liberar os botões para o usuário iniciar uma nova rota
@@ -355,6 +373,35 @@ function newScheduledMove(player) {
   io.emit('onMove', {id: player.id, energy: player.energy, energyToRestore: player.energyToRestore, legList: player.legList});
 }
 
+function notify(player, title, msg) {
+  if (player.onLine) return;
+  // pega o FCM token desse player
+  var FCMtoken = '';
+  for (var i = 0; i < fcmTokenList.length; i++) {
+    if (fcmTokenList[i] == undefined) continue;
+    if (fcmTokenList[i].player == player.id) {
+      FCMtoken = fcmTokenList[i].FCMtoken;
+      break;
+    }
+  }
+  if (FCMtoken == '') return;
+  console.log("notify - player: " + player.id + " title: " + title + " msg: " + msg);
+  var sender = new gcm.Sender('AAAAH3KNXyI:APA91bEtXyh7S95EpCXNzgHk7u3VnMWxXkWWoslIF2sHDzI_4CJZLcufs-fCHwsHHrqtUujCH25acDxfffrTPzGHh-Q61MrXyUC-JeiqnXhhC1IN0L0w5X_JbQgVplSWZlTHyYkiY7EC');
+  var message = new gcm.Message({
+    //data: { key1: msg },
+    notification: {
+  		title: title,
+  		icon: "ic_launcher",
+  		body: msg
+	  }
+  });
+  var regTokens = [FCMtoken];
+  sender.send(message, { registrationTokens: regTokens }, function (err, response) {
+	   if (err) console.error(err);
+	   else console.log(response);
+   });
+}
+
 io.on('connection', function (socket) {
   console.log('connection: ' + socket.id);
 
@@ -385,9 +432,7 @@ io.on('connection', function (socket) {
       socket.playerId = id;
       var player = playerList[socket.playerId];
       player.onLine = true;
-      var timeToNewRoute = Math.max(player.nextMove - Date.now(), 0);
-      var timeToNewBomb = Math.max(player.nextBomb - Date.now(), 0);
-      socket.emit('onLogin', {id: socket.playerId, resultCode: 0, playerStatus: player.status, timeToNewRoute: timeToNewRoute, timeToNewBomb: timeToNewBomb, conf: conf}); //0=Login Ok
+      socket.emit('onLogin', {id: socket.playerId, resultCode: 0, conf: conf}); //0=Login Ok
       socket.emit('onNewPlayer', playerList.filter(Boolean).map(player => reject(player, ['scheduledMove', 'timeToRestore'])));
       socket.emit('onNewFood', foodList.filter(Boolean));
       socket.emit('onNewBomb', bombList.filter(Boolean));
@@ -400,7 +445,9 @@ io.on('connection', function (socket) {
         leg.now = Date.now(); // só atualiza o now!!!
         socket.emit('onMove', {id: player.id, energy: player.energy, energyToRestore: player.energyToRestore, legList: player.legList});
       }
-
+      var timeToNewRoute = Math.max(player.nextMove - Date.now(), 0);
+      var timeToNewBomb = Math.max(player.nextBomb - Date.now(), 0);
+      socket.emit('onReadyToPlay', {timeToNewRoute: timeToNewRoute, timeToNewBomb: timeToNewBomb});
       socket.broadcast.emit('onLogin', {id: socket.playerId, resultCode: 0}); //0=Login Ok
   });
 
@@ -456,7 +503,7 @@ io.on('connection', function (socket) {
       if ( dist > maxDist ) return;
       // cria no mapa
       var bombId = (bombList.indexOf(undefined) != -1) ? bombList.indexOf(undefined) : bombList.push(undefined) - 1;
-      bombList[bombId] = {id: bombId, type: 0, lat: lat, lng: lng, energy: conf.BOMB_DEFAULT_ENERGY, expire: Date.now() + conf.BOMB_EXPIRE};
+      bombList[bombId] = {id: bombId, type: 0, player: player.id, lat: lat, lng: lng, energy: conf.BOMB_DEFAULT_ENERGY, expire: Date.now() + conf.BOMB_EXPIRE};
       io.emit('onNewBomb', [bombList[bombId]]); // para todo mundo
       player.nextBomb = Date.now() + conf.WAIT_AFTER_BOMB;
       player.energy -= conf.BOMB_UNIT_COST;
@@ -505,6 +552,22 @@ io.on('connection', function (socket) {
       } else { // está parado no final de uma leg -> apenas cancelar o agendamento do reinício da rota
           clearTimeout(player.scheduledMove);
       }
+  });
+
+  socket.on('refreshtoken', function (token) {
+      console.log('FCM - token: ' + token);
+      var fcmTokenId = -1;
+      for (var i = 0; i < fcmTokenList.length; i++) {
+        if (fcmTokenList[i] == undefined) continue;
+        if (fcmTokenList[i].player == socket.playerId) {
+          fcmTokenId = i;
+          break;
+        }
+      }
+      if (fcmTokenId == -1) {
+        fcmTokenId = (fcmTokenList.indexOf(undefined) != -1) ? fcmTokenList.indexOf(undefined) : fcmTokenList.push(undefined) - 1;
+      }
+      fcmTokenList[fcmTokenId] = {player: socket.playerId, FCMtoken: token};
   });
 
 });

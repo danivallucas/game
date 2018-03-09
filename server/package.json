@@ -9,7 +9,10 @@
   "dependencies": {
     "@google/maps": "^0.4.5",
     "base64url": "^2.0.0",
+    "console-stamp": "^0.2.6",
     "express": "4.13.4",
+    "mongoose": "^5.0.8",
+    "node-gcm": "^0.14.10",
     "request": "^2.83.0",
     "socket.io": "^1.7.2"
   },

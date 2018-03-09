@@ -28,7 +28,7 @@ import io.socket.client.Socket;
 
 public class LoginActivity extends Activity {
 
-    private int previousSelectedPosition = -1;
+    private int previousSelectedPosition = 0;
     private GridView gridView;
     private App app;
     protected Socket mSocket;
@@ -46,33 +46,22 @@ public class LoginActivity extends Activity {
         signInButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
-
-                if (previousSelectedPosition == -1) {
-                    Toast.makeText(getApplicationContext(), "Selecione seu emoji", Toast.LENGTH_LONG).show();
-                } else {
-                    Intent intent = new Intent();
-                    intent.putExtra("mPlayerName", mUsernameView.getText().toString().trim());
-                    intent.putExtra("mEmoji", previousSelectedPosition);
-                    setResult(RESULT_OK, intent);
-                    finish();
-                }
+                Intent intent = new Intent();
+                intent.putExtra("mPlayerName", mUsernameView.getText().toString().trim());
+                intent.putExtra("mEmoji", previousSelectedPosition);
+                setResult(RESULT_OK, intent);
+                finish();
             }
         });
 
         gridView = (GridView) findViewById(R.id.grid_emoji);
         gridView.setAdapter(new ImageAdapter(this));
-
         gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 view.setBackgroundColor(Color.parseColor("#FFFFFF"));
-
-                if (previousSelectedPosition != -1)
-                {
-                    ImageView previousSelectedView = (ImageView) gridView.getChildAt(previousSelectedPosition);
-                    previousSelectedView.setBackground(null);
-                }
-
+                ImageView previousSelectedView = (ImageView) gridView.getChildAt(previousSelectedPosition);
+                previousSelectedView.setBackground(null);
                 previousSelectedPosition = position;
             }
         });
@@ -83,8 +72,8 @@ public class LoginActivity extends Activity {
         super.onResume();
         app.setTag(1);
 
-/*
         // AUTO LOGIN
+/*
         Intent intent = new Intent();
         intent.putExtra("mPlayerName", "Danival");
         intent.putExtra("mEmoji", 0);
@@ -126,19 +115,19 @@ public class LoginActivity extends Activity {
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
-            ImageView  imageView = new ImageView(mContext);
+            ImageView imageView = new ImageView(mContext);
             String id = String.format("%03d", position+1);
             int idEmoji = LoginActivity.this.getResources().getIdentifier("com.danival.game:drawable/" + "emoji" + id, null, null);
             imageView.setImageResource(idEmoji);
             imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
             int size = (int) getResources().getDimension(R.dimen.emoji_login);
             imageView.setLayoutParams(new GridView.LayoutParams(size, size));
+            if (position == 0) {
+                imageView.setBackgroundColor(Color.parseColor("#FFFFFF"));
+            }
             return imageView;
         }
-
     }
-
-
 
 }
 

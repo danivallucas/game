@@ -103,8 +103,8 @@ public class Game {
     }
 
 
-    public Bomb newBomb(int id, int type, LatLng position, int energy) {
-        Bomb bomb = new Bomb(main, id, type, position, energy);
+    public Bomb newBomb(int id, int type, int player, LatLng position, int energy) {
+        Bomb bomb = new Bomb(main, id, type, player, position, energy);
         bombList.add(bomb);
         return bomb;
     }

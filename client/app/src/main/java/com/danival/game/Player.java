@@ -90,8 +90,8 @@ public class Player {
     }
 
     public Bitmap getIconBmp() {
-        int w = Math.round(75*main.metrics.density);
-        int h = Math.round(85*main.metrics.density);
+        int w = Math.round(50*main.metrics.density);
+        int h = Math.round(81*main.metrics.density);
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bmp);
 
@@ -112,14 +112,14 @@ public class Player {
         if (!onLine)
             color.setColorFilter(colorFilter);
 
-        //String emojiIcon = String.format("emoji%03d", emoji+1);
-        String emojiIcon = String.format("emoji%03d", Math.max(id*5,1)); // testes!!!
+        String emojiIcon = String.format("emoji%03d", emoji+1);
+        //String emojiIcon = String.format("emoji%03d", Math.max(id*5,1)); // testes!!!
         int resID = main.getResources().getIdentifier(emojiIcon , "drawable", main.getPackageName());
         canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.marker), 0,15*main.metrics.density, color);
-        canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), (75.0f/2-40/2)*main.metrics.density,20*main.metrics.density, color);
+        canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 5*main.metrics.density,19*main.metrics.density, color);
         //canvas1.drawText(name, 150, 40, color);
-        canvas.drawText(name, 75.0f/2*main.metrics.density, 10*main.metrics.density, stroke); // testes!!!
-        canvas.drawText(name, 75.0f/2*main.metrics.density, 10*main.metrics.density, color); // testes!!!
+        canvas.drawText(name, 25*main.metrics.density, 12*main.metrics.density, stroke); // testes!!!
+        canvas.drawText(name, 25*main.metrics.density, 12*main.metrics.density, color); // testes!!!
         return bmp;
     }
 
@@ -129,7 +129,7 @@ public class Player {
         marker = main.mMap.addMarker(new MarkerOptions()
                 .position(position)
                 .icon(BitmapDescriptorFactory.fromBitmap(getIconBmp()))
-                .alpha(0.7f));
+                .alpha(1f));
         marker.setTag("Player:"+id);
 
         //float zoom = Math.max(1f, 19-(((float)energy - 10)/(5000-10)*(19-11))); // energia 10 = zoom 19, energia 5000 = zoom 11
@@ -289,8 +289,8 @@ public class Player {
 
     public void drawLegList() {
         setPosition(position);
+        if (id != main.mPlayerId) return; // só desenha as legs no player que as criou
         legList.get(0).draw(position);
-        if (id != main.mPlayerId) return; // só desenha as demais legs no player que as criou
         for (int i = 1; i < legList.size(); i++) {
             legList.get(i).draw();
         }

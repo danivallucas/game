@@ -5,7 +5,10 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Point;
 import android.graphics.Typeface;
+import android.view.View;
+import android.widget.ImageView;
 
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.Circle;
@@ -18,15 +21,18 @@ public class Bomb {
     protected MainActivity main;
     public int id;
     public int type;
+    public int player;
     public LatLng position;
     public int energy;
     public Circle energyUI;
     public Marker marker;
+    private boolean removed = false;
 
-    public Bomb(MainActivity context, int _id, int _type, LatLng _position, int _energy) {
+    public Bomb(MainActivity context, int _id, int _type, int _player, LatLng _position, int _energy) {
         main = context;
         id = _id;
         type = _type;
+        player = _player;
         position = _position;
         energy = _energy;
     }
@@ -54,12 +60,35 @@ public class Bomb {
         //canvas1.drawText("("+energy+")", 80, 40, color);
         marker = main.mMap.addMarker(new MarkerOptions()
                 .position(position)
+                .anchor(0.5f, 0.5f)
                 .icon(BitmapDescriptorFactory.fromBitmap(bmp)));
         marker.setTag("Bomb:"+id);
         marker.setVisible(main.isMarkerVisible("bomb", energy));
     }
 
+    public void animate() {
+        // Animação da bomba
+        Point p = main.mMap.getProjection().toScreenLocation(position);
+        final ImageView bomb = (ImageView)main.findViewById(R.id.bomb);
+        bomb.setX(p.x - bomb.getWidth()/2);
+        bomb.setY(p.y - bomb.getHeight()/2);
+        bomb.setScaleX(1);
+        bomb.setScaleY(1);
+        bomb.setVisibility(View.VISIBLE);
+        bomb.animate().scaleX(0).scaleY(0).setDuration(500).withEndAction(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        bomb.setVisibility(View.GONE);
+                        if (!removed) // pode ter sido removida antes do término da animação
+                            drawOnMap();
+                    }
+                });
+
+    }
+
     public void clear() {
+        removed = true;
         if (marker != null) {
             marker.remove();
             marker = null;

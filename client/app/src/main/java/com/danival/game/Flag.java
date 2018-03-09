@@ -79,8 +79,8 @@ public class Flag {
         drawEnergy();
         drawLabel();
 
-        int w = Math.round(40*main.metrics.density);
-        int h = Math.round(50*main.metrics.density);
+        int w = Math.round(50*main.metrics.density); //40
+        int h = Math.round(70*main.metrics.density); //50
         Bitmap.Config conf = Bitmap.Config.ARGB_8888;
         Bitmap bmp = Bitmap.createBitmap(w, h, conf);
         Canvas canvas = new Canvas(bmp);
@@ -101,9 +101,10 @@ public class Flag {
         //color.setShadowLayer(2.0f, 2.0f, 2.0f, Color.WHITE);
 
         //canvas1.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.marker), 0,60, color);
-        String emojiIcon = (type.equals("city")) ? "flag000" : String.format("flag%03d", id+1);
+        //String emojiIcon = (type.equals("city")) ? "flag000" : String.format("flag%03d", id+1);
+        String emojiIcon = "flag_test01";
         int resID = main.getResources().getIdentifier(emojiIcon , "drawable", main.getPackageName());
-        canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 0,10*main.metrics.density, color);
+        canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 0,14*main.metrics.density, color);
         canvas.drawText("" + main.format.format(Math.ceil(points)), 40.0f/2*main.metrics.density, 10*main.metrics.density, stroke);
         canvas.drawText("" + main.format.format(Math.ceil(points)), 40.0f/2*main.metrics.density, 10*main.metrics.density, color);
 
