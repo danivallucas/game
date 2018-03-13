@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -69,8 +70,9 @@ public class LoginActivity extends Activity {
 
     @Override
     protected void onResume() {
+        Log.e("game", "Login.onResume");
         super.onResume();
-        app.setTag(1);
+        //app.setTag(1);
 
         // AUTO LOGIN
 /*
@@ -84,6 +86,7 @@ public class LoginActivity extends Activity {
 
     @Override
     protected void onStop() {
+        Log.e("game", "Login.onStop");
         super.onStop();
         if (!isFinishing()) {
             mSocket.disconnect();

@@ -1,4 +1,4 @@
-require('console-stamp')(console, 'HH:MM:ss.l');
+require('console-stamp')(console, 'dd-mm HH:MM:ss.l');
 var express = require('express');
 var app = express();
 var server = require('http').createServer(app);

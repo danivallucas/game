@@ -122,6 +122,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.e("game", "onCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         app = (App) this.getApplication();
@@ -209,6 +210,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onRestart() {
+        Log.e("game", "onRestart");
         super.onRestart();
         if (!isConnected) {
             enterGame();
@@ -217,12 +219,14 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onResume() {
+        Log.e("game", "onResume");
         super.onResume();
         app.setTag(0);
     }
 
     @Override
     public void onStop() {
+        Log.e("game", "onStop");
         super.onStop();
         if ( isConnected && (app.getTag() == 0) ) {
             mSocket.disconnect();
@@ -231,6 +235,8 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void startSignIn() {
+        Log.e("game", "startSignIn");
+        app.setTag(1);
         mPlayerName = "";
         Intent intent = new Intent(this, LoginActivity.class);
         startActivityForResult(intent, REQUEST_LOGIN);
@@ -254,6 +260,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void afterConnect() {
+        Log.e("game", "afterConnect");
         mPlayerId = sharedPref.getInt("id", 0);
         mPlayerToken = sharedPref.getString("token", "");
         if (mPlayerToken.equals("")) {
@@ -265,6 +272,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     public void tryConnectAgain(int mili) {
+        Log.e("game", "tryConnectAgain");
         new CountDownTimer(mili, 0) {
             public void onTick(long millisUntilFinished) {}
             public void onFinish() {
@@ -274,11 +282,13 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void enterGame() {
+        Log.e("game", "enterGame");
         changeUIState(0);
         mSocket.connect();
     }
 
     private void exitGame() {
+        Log.e("game", "exitGame");
         SharedPreferences.Editor editor = sharedPref.edit();
         editor.putInt("id", mPlayerId);
         editor.putString("token", mPlayerToken);
@@ -1118,6 +1128,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
+        Log.e("game", "onMapReady");
         mMap = googleMap;
         mMap.setOnMapClickListener(this);
         mMap.setOnCameraMoveListener(this);
@@ -1132,6 +1143,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                     @Override
                     public void onSuccess(Location location) {
                         if (location != null) {
+                            Log.e("game", "mFusedLocationClient.onSuccess");
                             mPosition = new LatLng(location.getLatitude(), location.getLongitude());
                             enterGame();
                         }
@@ -1254,6 +1266,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     public void onFCMTokenRefresh(String token) {
+        Log.e("game", "onFCMTokenRefresh");
         SharedPreferences.Editor editor = sharedPref.edit();
         editor.putString("FCMToken", token);
         editor.commit();
