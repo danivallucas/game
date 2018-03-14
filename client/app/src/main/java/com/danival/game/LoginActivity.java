@@ -24,6 +24,9 @@ import android.widget.Toast;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import io.socket.client.Socket;
 
 
@@ -33,6 +36,7 @@ public class LoginActivity extends Activity {
     private GridView gridView;
     private App app;
     protected Socket mSocket;
+    private List<ImageView> emojiList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,6 +45,9 @@ public class LoginActivity extends Activity {
 
         app = (App) this.getApplication();
         mSocket = app.getSocket();
+
+        emojiList = new ArrayList<ImageView>();
+        loadEmojiIcons();
 
         final EditText mUsernameView = (EditText) findViewById(R.id.username_input);
         Button signInButton = (Button) findViewById(R.id.sign_in_button);
@@ -60,9 +67,12 @@ public class LoginActivity extends Activity {
         gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                view.setBackgroundColor(Color.parseColor("#FFFFFF"));
-                ImageView previousSelectedView = (ImageView) gridView.getChildAt(previousSelectedPosition);
-                previousSelectedView.setBackground(null);
+                Log.e("game", "Login.setOnItemClickListener - position: " + position);
+                ImageView emojiClicked = emojiList.get(position);
+                emojiClicked.setBackgroundColor(Color.parseColor("#FFFFFF"));
+                //ImageView previousSelectedView = (ImageView) gridView.getChildAt(previousSelectedPosition);
+                ImageView previousEmojiClicked = emojiList.get(previousSelectedPosition);
+                previousEmojiClicked.setBackground(null);
                 previousSelectedPosition = position;
             }
         });
@@ -93,6 +103,22 @@ public class LoginActivity extends Activity {
         }
     }
 
+    protected void loadEmojiIcons() {
+        for (int i = 0; i < 104; i++) {
+            ImageView imageView = new ImageView(this);
+            String id = String.format("%03d", i+1);
+            int idEmoji = LoginActivity.this.getResources().getIdentifier("com.danival.game:drawable/" + "emoji" + id, null, null);
+            imageView.setImageResource(idEmoji);
+            imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+            int size = (int) getResources().getDimension(R.dimen.emoji_login);
+            imageView.setLayoutParams(new GridView.LayoutParams(size, size));
+            if (i == 0) {
+                imageView.setBackgroundColor(Color.parseColor("#FFFFFF"));
+            }
+            emojiList.add(imageView);
+        }
+    }
+
     public class ImageAdapter extends BaseAdapter {
         private Context mContext;
 
@@ -118,17 +144,7 @@ public class LoginActivity extends Activity {
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
-            ImageView imageView = new ImageView(mContext);
-            String id = String.format("%03d", position+1);
-            int idEmoji = LoginActivity.this.getResources().getIdentifier("com.danival.game:drawable/" + "emoji" + id, null, null);
-            imageView.setImageResource(idEmoji);
-            imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-            int size = (int) getResources().getDimension(R.dimen.emoji_login);
-            imageView.setLayoutParams(new GridView.LayoutParams(size, size));
-            if (position == 0) {
-                imageView.setBackgroundColor(Color.parseColor("#FFFFFF"));
-            }
-            return imageView;
+            return emojiList.get(position);
         }
     }
 
