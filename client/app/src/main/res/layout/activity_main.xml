@@ -57,15 +57,15 @@
 
     <TextView
         android:id="@+id/alert"
-        android:text="Testando alert..."
+        android:text="Conectando..."
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="200dp"
         android:layout_marginLeft="25dp"
         android:layout_marginRight="25dp"
-        android:gravity="center_vertical"
         android:padding="10dp"
         android:textSize="18dp"
-        android:textColor="#FF000000"
+        android:textColor="#FFFF0000"
         android:elevation="5dp"
         android:background="#FFFFFFFF"
         android:visibility="visible"/>

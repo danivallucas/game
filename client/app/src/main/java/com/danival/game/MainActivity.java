@@ -306,6 +306,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    if (isConnected) return;
                     isConnected = true;
                     alert.setVisibility(View.GONE);
                     afterConnect();
@@ -320,6 +321,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    if (!isConnected) return;
                     isConnected = false;
                     exitGame();
                 }
