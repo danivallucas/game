@@ -1,6 +1,7 @@
 package com.danival.game;
 
 import android.app.Activity;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -100,7 +101,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     public DecimalFormat format;
     private SharedPreferences sharedPref; // arq configurações
     protected Metrics metrics;
-    private static final int REQUEST_LOGIN = 0;
+    private static final int REQUEST_LOGIN = 3024;
     protected int mPlayerId;
     private String mPlayerName;
     private int mEmoji;
@@ -119,6 +120,8 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private Handler zoomHandler; // Verifica a visibilidade ao mudar o zoom
     private List<LatLng> routePositions;
     private Polyline routePolyline;
+    private ImageView splash_bg;
+    private ImageView splash_icon;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -136,21 +139,25 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         mPlayerName = "";
         game = new Game(this);
         metrics = new Metrics(this);
-        setUpSocket();
+        //mSocket = app.getSocket();
         initMap();
+        splash_bg = (ImageView) this.findViewById(R.id.splash_bg);
+        splash_icon = (ImageView) this.findViewById(R.id.splash_icon);
+        splash_icon.setX(metrics.w/2 - 96*metrics.density/2);
+        splash_icon.setY(metrics.h/2 - 96*metrics.density/2);
         ranking = (TextView) this.findViewById(R.id.ranking);
         msg = (TextView)findViewById(R.id.msg);
         alert = (TextView)findViewById(R.id.alert);
+        alert.setY(metrics.h/2 + 96*metrics.density/2);
         routePositions = new ArrayList<LatLng>();
         // FCM
-        Crashlytics.log("Testando Firebase Crashlytics...");
+        //Crashlytics.log("Testando Firebase Crashlytics...");
         FCMBroadCastReceiver fcmBroadCastReceiver = new FCMBroadCastReceiver(this);
         LocalBroadcastManager.getInstance(this).registerReceiver(fcmBroadCastReceiver, new IntentFilter("com.danival.game.FCM_BROADCAST"));
         FCMToken = sharedPref.getString("FCMToken", "");
     }
 
-    private void setUpSocket() {
-        mSocket = app.getSocket();
+    private void registerSocketEvents() {
         mSocket.on(Socket.EVENT_CONNECT,onConnect);
         mSocket.on(Socket.EVENT_DISCONNECT,onDisconnect);
         mSocket.on(Socket.EVENT_CONNECT_ERROR, onConnectError);
@@ -177,11 +184,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         mSocket.on("onReadyToPlay", onReadyToPlay);
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-
-        //mSocket.disconnect();
+    private void unregisterSocketEvents() {
         mSocket.off(Socket.EVENT_CONNECT,onConnect);
         mSocket.off(Socket.EVENT_DISCONNECT,onDisconnect);
         mSocket.off(Socket.EVENT_CONNECT_ERROR, onConnectError);
@@ -206,6 +209,12 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         mSocket.off("onStop", onStop);
         mSocket.off("onPlayerOut", onPlayerOut);
         mSocket.off("onReadyToPlay", onReadyToPlay);
+    }
+
+        @Override
+    public void onDestroy() {
+        Log.e("game", "onDestroy");
+        super.onDestroy();
     }
 
     @Override
@@ -244,6 +253,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        Log.e("game", "onActivityResult - requestCode: " + requestCode);
         super.onActivityResult(requestCode, resultCode, data);
         if (Activity.RESULT_OK != resultCode) {
             this.finish();
@@ -273,9 +283,12 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
     public void tryConnectAgain(int mili) {
         Log.e("game", "tryConnectAgain");
-        new CountDownTimer(mili, 0) {
-            public void onTick(long millisUntilFinished) {}
+        new CountDownTimer(mili, 1000) {
+            public void onTick(long millisUntilFinished) {
+                alert.setText("Erro: Nova tentativa em " + millisUntilFinished / 1000 + "s...");
+            }
             public void onFinish() {
+                alert.setText("Conectando...");
                 enterGame();
             }
         }.start();
@@ -283,12 +296,22 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
     private void enterGame() {
         Log.e("game", "enterGame");
+        NotificationManager nMgr = (NotificationManager) this.getSystemService(Context.NOTIFICATION_SERVICE);
+        nMgr.cancelAll();
+        splash_bg.setVisibility(View.VISIBLE);
+        splash_icon.setVisibility(View.VISIBLE);
+        alert.setVisibility(View.VISIBLE);
+        ranking.setVisibility(View.GONE);
+        app.initSocket();
+        mSocket = app.getSocket();
+        registerSocketEvents();
         changeUIState(0);
         mSocket.connect();
     }
 
     private void exitGame() {
         Log.e("game", "exitGame");
+        unregisterSocketEvents();
         SharedPreferences.Editor editor = sharedPref.edit();
         editor.putInt("id", mPlayerId);
         editor.putString("token", mPlayerToken);
@@ -306,9 +329,10 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    Log.e("game", "onConnect");
                     if (isConnected) return;
                     isConnected = true;
-                    alert.setVisibility(View.GONE);
+                    //alert.setVisibility(View.GONE);
                     afterConnect();
                 }
             });
@@ -321,6 +345,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    Log.e("game", "onDisconnect");
                     if (!isConnected) return;
                     isConnected = false;
                     exitGame();
@@ -335,7 +360,9 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    tryConnectAgain(1000);
+                    Log.e("game", "onConnectError");
+                    alert.setText("Erro: Nova tentativa em 3s...");
+                    tryConnectAgain(3000);
                 }
             });
         }
@@ -565,7 +592,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 public void run() {
                     try {
                         if (!isLoggedIn) return;
-                        Log.e("game", "onNewBomb");
                         JSONArray list = (JSONArray) args[0];
                         for (int i = 0; i < list.length(); i++) {
                             JSONObject data = list.getJSONObject(i);
@@ -809,6 +835,10 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 return;
             }
         }
+        if (routePositions.size() > 20) {
+            Toast.makeText(getApplicationContext(), "Escolha no máximo 20 destinos.", Toast.LENGTH_LONG).show();
+            return;
+        }
         routePositions.add(latLng);
         if (routePositions.size() < 2) return; // só traça a polylinha do 2o ponto em diante
         if (routePolyline != null)
@@ -945,10 +975,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             Toast.makeText(getApplicationContext(), "Escolha pelo menos um local.", Toast.LENGTH_LONG).show();
             return;
         }
-        if (routePositions.size() > 10) {
-            Toast.makeText(getApplicationContext(), "Erro: Muitos trechos.", Toast.LENGTH_LONG).show();
-            return;
-        }
         mSocket.emit("move", "normal", encodeRoute());
         Player player = game.getPlayer(mPlayerId);
         player.refreshIcon();
@@ -1033,19 +1059,27 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         msg.setVisibility(View.GONE);
         alert.setVisibility(View.GONE);
         ranking.setVisibility(View.GONE);
+        splash_bg.setVisibility(View.GONE);
+        splash_icon.setVisibility(View.GONE);
 
         switch (state) {
             case 0: // connect
+                splash_bg.setVisibility(View.VISIBLE);
+                splash_icon.setVisibility(View.VISIBLE);
                 alert.setText("Conectando...");
                 alert.setVisibility(View.VISIBLE);
                 break;
             case 1: // spawn
                 msg.setText("Clique no mapa para iniciar.");
                 msg.setVisibility(View.VISIBLE);
-                ranking.setVisibility(View.VISIBLE);
+/*
+                if (!ranking.getText().equals(""))
+                    ranking.setVisibility(View.VISIBLE);
+*/
                 break;
             case 2: // main
-                ranking.setVisibility(View.VISIBLE);
+                if (!ranking.getText().equals(""))
+                    ranking.setVisibility(View.VISIBLE);
                 break;
             case 3: // go
                 msg.setText("Monte uma rota.");
@@ -1060,7 +1094,8 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 msg.setVisibility(View.VISIBLE);
                 break;
             case 6: // moving
-                ranking.setVisibility(View.VISIBLE);
+                if (!ranking.getText().equals(""))
+                    ranking.setVisibility(View.VISIBLE);
                 break;
         }
         if (state >= 2)

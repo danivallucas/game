@@ -80,7 +80,7 @@ public class Flag {
         drawLabel();
 
         int w = Math.round(50*main.metrics.density); //40
-        int h = Math.round(70*main.metrics.density); //50
+        int h = Math.round(74*main.metrics.density); //50
         Bitmap.Config conf = Bitmap.Config.ARGB_8888;
         Bitmap bmp = Bitmap.createBitmap(w, h, conf);
         Canvas canvas = new Canvas(bmp);
@@ -102,17 +102,19 @@ public class Flag {
 
         //canvas1.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.marker), 0,60, color);
         //String emojiIcon = (type.equals("city")) ? "flag000" : String.format("flag%03d", id+1);
-        String emojiIcon = "flag_test01";
+        String emojiIcon = "flag_test";
         int resID = main.getResources().getIdentifier(emojiIcon , "drawable", main.getPackageName());
         canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 0,14*main.metrics.density, color);
-        canvas.drawText("" + main.format.format(Math.ceil(points)), 40.0f/2*main.metrics.density, 10*main.metrics.density, stroke);
-        canvas.drawText("" + main.format.format(Math.ceil(points)), 40.0f/2*main.metrics.density, 10*main.metrics.density, color);
+        canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.flag_edge), 0,14*main.metrics.density, color);
+        canvas.drawText("" + main.format.format(Math.ceil(points)), 50.0f/2*main.metrics.density, 12*main.metrics.density, stroke);
+        canvas.drawText("" + main.format.format(Math.ceil(points)), 50.0f/2*main.metrics.density, 12*main.metrics.density, color);
 
         float anchorX = type.equals("capital") ? 0.5F : 0.1F;
-        float anchorY = type.equals("capital") ? 0.59F : 0.98F;
+        float anchorY = type.equals("capital") ? 1F : 0.98F;
         marker = main.mMap.addMarker(new MarkerOptions()
                 .position(position)
                 .anchor(anchorX, anchorY)
+                .alpha(0.85f)
                 .icon(BitmapDescriptorFactory.fromBitmap(bmp)));
         marker.setTag("Flag:"+id);
         marker.setVisible(main.isMarkerVisible(type, points));

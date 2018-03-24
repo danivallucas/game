@@ -48,18 +48,24 @@ public class Game {
     }
 
     public Player getPlayer(int id) {
-        return playerList.get(findPlayerIndex(id));
+        int playerIndex = findPlayerIndex(id);
+        return (playerIndex == -1) ? null : playerList.get(playerIndex);
     }
 
 
     public Player newPlayer(int id, String name, int emoji, boolean onLine, String status, LatLng position, int energy, double flagPoints, int energyToRestore) {
-        Player player = new Player(main, id, name, emoji, onLine, status, position, energy, flagPoints, energyToRestore);
-        playerList.add(player);
+        Player player = getPlayer(id);
+        if (player == null) {
+            player = new Player(main, id, name, emoji, onLine, status, position, energy, flagPoints, energyToRestore);
+            playerList.add(player);
+        }
         return player;
     }
 
     public void removePlayer(int id) {
-        playerList.remove(findPlayerIndex(id));
+        int playerIndex = findPlayerIndex(id);
+        if (playerIndex == -1) return;
+        playerList.remove(playerIndex);
     }
 
     // *** Food ***
@@ -73,19 +79,25 @@ public class Game {
     }
 
     public Food getFood(int id) {
-        return foodList.get(findFoodIndex(id));
+        int foodIndex = findFoodIndex(id);
+        return (foodIndex == -1) ? null : foodList.get(foodIndex);
     }
 
 
     public Food newFood(int id, int type, LatLng position, int energy) {
-        Food food = new Food(main, id, type, position, energy);
-        foodList.add(food);
+        Food food = getFood(id);
+        if (food == null) {
+            food = new Food(main, id, type, position, energy);
+            foodList.add(food);
+        }
         return food;
     }
 
     public void removeFood(int id) {
+        int foodIndex = findFoodIndex(id);
+        if (foodIndex == -1) return;
         getFood(id).clear();
-        foodList.remove(findFoodIndex(id));
+        foodList.remove(foodIndex);
     }
 
     // *** Bomb ***
@@ -99,19 +111,24 @@ public class Game {
     }
 
     public Bomb getBomb(int id) {
-        return bombList.get(findBombIndex(id));
+        int bombIndex = findBombIndex(id);
+        return (bombIndex == -1) ? null : bombList.get(bombIndex);
     }
 
-
     public Bomb newBomb(int id, int type, int player, LatLng position, int energy) {
-        Bomb bomb = new Bomb(main, id, type, player, position, energy);
-        bombList.add(bomb);
+        Bomb bomb = getBomb(id);
+        if (bomb == null) {
+            bomb = new Bomb(main, id, type, player, position, energy);
+            bombList.add(bomb);
+        }
         return bomb;
     }
 
     public void removeBomb(int id) {
+        int bombIndex = findBombIndex(id);
+        if (bombIndex == -1) return;
         getBomb(id).clear();
-        bombList.remove(findBombIndex(id));
+        bombList.remove(bombIndex);
     }
 
     // *** EnergyBall ***
@@ -125,19 +142,25 @@ public class Game {
     }
 
     public EnergyBall getEnergyBall(int id) {
-        return energyBallList.get(findEnergyBallIndex(id));
+        int energyBallIndex = findEnergyBallIndex(id);
+        return (energyBallIndex == -1) ? null : energyBallList.get(energyBallIndex);
     }
 
 
     public EnergyBall newEnergyBall(int id, int type, LatLng position, int energy) {
-        EnergyBall energyBall = new EnergyBall(main, id, type, position, energy);
-        energyBallList.add(energyBall);
+        EnergyBall energyBall = getEnergyBall(id);
+        if (energyBall == null) {
+            energyBall = new EnergyBall(main, id, type, position, energy);
+            energyBallList.add(energyBall);
+        }
         return energyBall;
     }
 
     public void removeEnergyBall(int id) {
+        int energyBallIndex = findEnergyBallIndex(id);
+        if (energyBallIndex == -1) return;
         getEnergyBall(id).clear();
-        energyBallList.remove(findEnergyBallIndex(id));
+        energyBallList.remove(energyBallIndex);
     }
 
     // *** Flag ***
@@ -151,19 +174,25 @@ public class Game {
     }
 
     public Flag getFlag(int id) {
-        return flagList.get(findFlagIndex(id));
+        int flagIndex = findFlagIndex(id);
+        return (flagIndex == -1) ? null : flagList.get(flagIndex);
     }
 
 
     public Flag newFlag(int id, String type, LatLng position, int energy, int wall, int playerId, double points) {
-        Flag flag = new Flag(main, id, type, position, energy, wall, playerId, points);
-        flagList.add(flag);
+        Flag flag = getFlag(id);
+        if (flag == null) {
+            flag = new Flag(main, id, type, position, energy, wall, playerId, points);
+            flagList.add(flag);
+        }
         return flag;
     }
 
     public void removeFlag(int id) {
+        int flagIndex = findFlagIndex(id);
+        if (flagIndex == -1) return;
         getFlag(id).clear();
-        flagList.remove(findFlagIndex(id));
+        flagList.remove(flagIndex);
     }
 
     // *** Clear ***
@@ -205,17 +234,19 @@ public class Game {
                     sb.append("\n");
                 //sb.append(++count + ". Player " + playerList.get(i).id + " (" + playerList.get(i).energy + ")");
                 //sb.append(++count + ". Player " + playerList.get(i).id);
-                sb.append(++count + ". " + playerList.get(i).name);
+                count++;
+                if ( (count > 10) && (playerList.get(i).id != main.mPlayerId) ) continue;
+                sb.append(count + ". " + playerList.get(i).name);
                 if (playerList.get(i).flagPoints > 0)
                     sb.append(": " + main.format.format(Math.ceil(playerList.get(i).flagPoints)));
             }
 
         }
         if (sb.toString().equals("")) {
-            main.ranking.setVisibility(View.GONE);
+            //main.ranking.setVisibility(View.GONE);
         } else {
             main.ranking.setText(sb);
-            main.ranking.setVisibility(View.VISIBLE);
+            //main.ranking.setVisibility(View.VISIBLE);
         }
         //main.checkPlayerListVisibility();
     }

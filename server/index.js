@@ -254,6 +254,7 @@ function onPlayerStop(player) {
     if ( (player2.energy - player.energy) >= getDist(player.lat, player.lng, player2.lat, player2.lng)) {
       player2.energy += player.energy;
       player.status = 'out';
+      notify(player, 'Ataque', 'Você foi capturado por ' + player2.name + '.');
       clearTimeout(player.scheduledMove);
       io.emit('onEnergyChange', {id: player2.id, energy: player2.energy, energyToRestore: player2.energyToRestore});
       io.emit('onPlayerOut', {id: player.id, status: player.status});
@@ -264,6 +265,7 @@ function onPlayerStop(player) {
       player.energy += player2.energy;
       energyChanged = true;
       player2.status = 'out';
+      notify(player2, 'Ataque', 'Você foi capturado por ' + player.name + '.');
       clearTimeout(player2.scheduledMove);
       io.emit('onPlayerOut', {id: player2.id, status: player2.status});
     }
@@ -390,8 +392,9 @@ function notify(player, title, msg) {
   var message = new gcm.Message({
     //data: { key1: msg },
     notification: {
+      priority: 'high',
   		title: title,
-  		icon: "ic_launcher",
+  		icon: "status_bar_icon",
   		body: msg
 	  }
   });
@@ -514,6 +517,7 @@ io.on('connection', function (socket) {
         if (playerList[j].status != 'in') continue;
         var player2 = playerList[j];
         if ( (player2.energy - conf.BOMB_DEFAULT_ENERGY) >= getDist(lat, lng, player2.lat, player2.lng)) {
+          notify(player2, 'Ataque', 'Você foi atacado por ' + player.name + '.');
           onPlayerStop(player2);
           break;
         }
