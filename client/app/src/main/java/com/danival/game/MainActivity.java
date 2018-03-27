@@ -179,6 +179,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         mSocket.on("onLegFinished", onLegFinished);
         mSocket.on("onEnergyChange", onEnergyChange);
         mSocket.on("onFlagCaptured", onFlagCaptured);
+        mSocket.on("onFlagReleased", onFlagReleased);
         mSocket.on("onStop", onStop);
         mSocket.on("onPlayerOut", onPlayerOut);
         mSocket.on("onReadyToPlay", onReadyToPlay);
@@ -206,6 +207,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         mSocket.off("onLegFinished", onLegFinished);
         mSocket.off("onEnergyChange", onEnergyChange);
         mSocket.off("onFlagCaptured", onFlagCaptured);
+        mSocket.off("onFlagReleased", onFlagReleased);
         mSocket.off("onStop", onStop);
         mSocket.off("onPlayerOut", onPlayerOut);
         mSocket.off("onReadyToPlay", onReadyToPlay);
@@ -744,12 +746,39 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                     try {
                         if (!isLoggedIn) return;
                         JSONObject data = (JSONObject) args[0];
+                        // Player que capturou a flag
                         int playerId = data.getInt("playerId");
                         Player player = game.getPlayer(playerId);
                         player.onFlagPointsChange(data.getDouble("flagPoints"));
+                        // Player que perdeu a flag
+                        int oldPlayerId = data.getInt("oldPlayerId");
+                        if (oldPlayerId != -1) {
+                            Player oldPlayer = game.getPlayer(oldPlayerId);
+                            oldPlayer.onFlagPointsChange(data.getDouble("oldPlayerFlagPoints"));
+                        }
+                        // Redesenha a flag
                         int flagId = data.getInt("flagId");
                         Flag flag = game.getFlag(flagId);
                         flag.onFlagCaptured(playerId);
+                    } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
+                }
+            });
+        }
+    };
+
+    private Emitter.Listener onFlagReleased = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        if (!isLoggedIn) return;
+                        JSONObject data = (JSONObject) args[0];
+                        // Redesenha a flag
+                        int flagId = data.getInt("flagId");
+                        Flag flag = game.getFlag(flagId);
+                        flag.onFlagReleased();
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
                 }
             });

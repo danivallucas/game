@@ -140,4 +140,10 @@ public class Flag {
         clear();
         drawOnMap();
     }
+
+    public void onFlagReleased() {
+        playerId = -1;
+        clear();
+        drawOnMap();
+    }
 }

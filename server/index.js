@@ -176,6 +176,27 @@ function newFood() {
   setTimeout(function(){ newFood(); }, conf.NEW_FOOD_TIME);
 }
 
+function onPlayerDie(player) {
+  player.status = 'out';
+  player.flagPoints = 0;
+  player.legList = [];
+  player.energy = conf.START_ENERGY;
+  clearTimeout(player.scheduledMove);
+  player.scheduledMove = undefined;
+  player.nextMove = 0;
+  player.nextBomb = 0;
+  player.energyToRestore = 0;
+  player.timeToRestore = undefined;
+  // perde as flags que possuía
+  for (var i = 0; i < flagList.length; i++) {
+    var flag = flagList[i];
+    if (flag.playerId == player.id)
+      flag.playerId = -1;
+      io.emit('onFlagReleased', {flagId: flag.id});
+  }
+  io.emit('onPlayerOut', {id: player.id, status: player.status});
+}
+
 function onPlayerStop(player) {
 /* Só cadastra cidade no spawn mesmo... para incentivar a solicitar a amigos de outras cidades que baixem o jogo para que elas sejam cadastradas!!!
   if (!insideCity(player.lat, player.lng)) // fez o spawn fora de todas as cidades cadastradas
@@ -199,9 +220,7 @@ function onPlayerStop(player) {
   }
   if (boom) { // se foi atingido por uma ou mais bombas
     if (player.energy/2 < conf.ENERGY_BALL_DEFAULT_ENERGY * 3) { // morre! muito pequeno para se dividir em 2, criar 3 energyBall(s) e ainda continuar vivo
-      player.status = 'out';
-      clearTimeout(player.scheduledMove);
-      io.emit('onPlayerOut', {id: player.id, status: player.status});
+      onPlayerDie(player);
       if (player.energy/2 >= conf.ENERGY_BALL_DEFAULT_ENERGY) { // se a metade der para criar pelo menos uma...
         var energyBallId = (energyBallList.indexOf(undefined) != -1) ? energyBallList.indexOf(undefined) : energyBallList.push(undefined) - 1;
         energyBallList[energyBallId] = {id: energyBallId, type: 0, lat: player.lat, lng: player.lng, energy: player.energy/2, expire: Date.now() + conf.ENERGY_BALL_EXPIRE};
@@ -253,21 +272,17 @@ function onPlayerStop(player) {
     // É capturado por outro
     if ( (player2.energy - player.energy) >= getDist(player.lat, player.lng, player2.lat, player2.lng)) {
       player2.energy += player.energy;
-      player.status = 'out';
+      onPlayerDie(player);
       notify(player, 'Ataque', 'Você foi capturado por ' + player2.name + '.');
-      clearTimeout(player.scheduledMove);
       io.emit('onEnergyChange', {id: player2.id, energy: player2.energy, energyToRestore: player2.energyToRestore});
-      io.emit('onPlayerOut', {id: player.id, status: player.status});
       return;
     }
     // Captura outros
     if ( (player.energy - player2.energy) >= getDist(player.lat, player.lng, player2.lat, player2.lng)) {
       player.energy += player2.energy;
       energyChanged = true;
-      player2.status = 'out';
+      onPlayerDie(player2);
       notify(player2, 'Ataque', 'Você foi capturado por ' + player.name + '.');
-      clearTimeout(player2.scheduledMove);
-      io.emit('onPlayerOut', {id: player2.id, status: player2.status});
     }
   }
   // Captura foods
@@ -298,10 +313,18 @@ function onPlayerStop(player) {
   // Captura flags
   for (var i = 0; i < flagList.length; i++) {
     var flag = flagList[i];
+    if (flag.playerId == player.id) continue; // não processa as flags que já são deste player
     if ( ( (player.energy+1) - flag.energy) >= getDist(player.lat, player.lng, flag.lat, flag.lng)) {
+      var oldPlayerId = -1;
+      var oldPlayerFlagPoints = 0;
+      if (flag.playerId != undefined) {
+        oldPlayerId = flag.playerId;
+        playerList[oldPlayerId].flagPoints -= flag.points;
+        oldPlayerFlagPoints = playerList[oldPlayerId].flagPoints;
+      }
       flag.playerId = player.id;
       player.flagPoints += flag.points;
-      io.emit('onFlagCaptured', {flagId: flag.id, playerId: player.id, flagPoints: player.flagPoints});
+      io.emit('onFlagCaptured', {flagId: flag.id, playerId: player.id, flagPoints: player.flagPoints, oldPlayerId: oldPlayerId, oldPlayerFlagPoints: oldPlayerFlagPoints});
     }
   }
 }
@@ -417,7 +440,9 @@ io.on('connection', function (socket) {
       console.log('createPlayer: ' + playerName + ' emoji: ' + emoji);
       // tenta pegar um id disponível na lista de jogadores
       socket.playerId = (playerList.indexOf(undefined) != -1) ? playerList.indexOf(undefined) : playerList.push(undefined) - 1;
-      playerList[socket.playerId] = {id: socket.playerId, name: playerName, emoji: emoji, token: token(4), onLine: true, status: 'out', lat: -100, lng: -200, energy: conf.START_ENERGY, flagPoints: 0, legList: [], scheduledMove: undefined, nextMove: 0, nextBomb: 0, energyToRestore: 0, timeToRestore: undefined}; // statu=in/out/moving
+      playerList[socket.playerId] = {id: socket.playerId, name: playerName, emoji: emoji, token: token(4), onLine: true, status: 'out',
+                                     lat: -100, lng: -200, energy: conf.START_ENERGY, flagPoints: 0, legList: [], scheduledMove: undefined,
+                                     nextMove: 0, nextBomb: 0, energyToRestore: 0, timeToRestore: undefined}; // statu=in/out/moving
       socket.emit('onCreatePlayerResult', pick(playerList[socket.playerId], ['id', 'token']));
       socket.broadcast.emit('onNewPlayer', [reject(playerList[socket.playerId], ['token', 'scheduledMove', 'timeToRestore'])]);
   });
