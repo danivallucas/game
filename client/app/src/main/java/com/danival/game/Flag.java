@@ -101,20 +101,21 @@ public class Flag {
         //color.setShadowLayer(2.0f, 2.0f, 2.0f, Color.WHITE);
 
         //canvas1.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.marker), 0,60, color);
-        //String emojiIcon = (type.equals("city")) ? "flag000" : String.format("flag%03d", id+1);
-        String emojiIcon = "flag_test";
+        String emojiIcon = (type.equals("capital")) ? String.format("flag%03d", id+1) : "flag000";
+        //String emojiIcon = "flag_test";
         int resID = main.getResources().getIdentifier(emojiIcon , "drawable", main.getPackageName());
         canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), resID), 0,14*main.metrics.density, color);
-        canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.flag_edge), 0,14*main.metrics.density, color);
+        if (type.equals("capital"))
+            canvas.drawBitmap(BitmapFactory.decodeResource(main.getResources(), R.drawable.flag_edge), 0,14*main.metrics.density, color);
         canvas.drawText("" + main.format.format(Math.ceil(points)), 50.0f/2*main.metrics.density, 12*main.metrics.density, stroke);
         canvas.drawText("" + main.format.format(Math.ceil(points)), 50.0f/2*main.metrics.density, 12*main.metrics.density, color);
 
-        float anchorX = type.equals("capital") ? 0.5F : 0.1F;
+        float anchorX = type.equals("capital") ? 0.5F : 0.06F;
         float anchorY = type.equals("capital") ? 1F : 0.98F;
         marker = main.mMap.addMarker(new MarkerOptions()
                 .position(position)
                 .anchor(anchorX, anchorY)
-                .alpha(0.85f)
+                .alpha(0.90f)
                 .icon(BitmapDescriptorFactory.fromBitmap(bmp)));
         marker.setTag("Flag:"+id);
         marker.setVisible(main.isMarkerVisible(type, points));

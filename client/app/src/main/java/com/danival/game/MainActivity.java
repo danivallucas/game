@@ -304,6 +304,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         splash_icon.setVisibility(View.VISIBLE);
         alert.setVisibility(View.VISIBLE);
         ranking.setVisibility(View.GONE);
+        msg.setVisibility(View.GONE);
         app.initSocket();
         mSocket = app.getSocket();
         registerSocketEvents();
@@ -420,7 +421,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                             if (!isLoggedIn) return;
                             Player player = game.getPlayer(id);
                             player.onLine = true;
-                            if (player.status.equals("in"))
+                            if (!player.status.equals("out"))
                                 player.refreshIcon();
                         }
                     } catch (JSONException e) { Log.e("game", Log.getStackTraceString(e)); }
@@ -985,6 +986,31 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         changeUIState(2);
     }
 
+    public void focus(LatLng latLng, String type, int id) {
+        double START_ZOOM;
+        double zoom = 15; // ruas
+        if (type.equals("Player")) {
+            Player player = game.getPlayer(id);
+            START_ZOOM = 17;
+            zoom = START_ZOOM - Math.log((float)player.energy/START_ENERGY)/Math.log(2);
+        }
+        if (type.equals("Food")) {
+            zoom = 17;
+        }
+        if (type.equals("Bomb")) {
+            zoom = 17;
+        }
+        if (type.equals("Flag")) {
+            zoom = 12;
+        }
+        CameraPosition cameraPosition = new CameraPosition.Builder()
+                .target(latLng)
+                .zoom((float)zoom)
+                .tilt(0)
+                .build();
+        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+    }
+
     public void finishSpawn(LatLng latLng) {
         double dist = SphericalUtil.computeDistanceBetween(mPosition, latLng);
         if ( dist > SPAWN_AREA ) {
@@ -1264,6 +1290,8 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         }
         if (uiState == 1)
             finishSpawn(latLng);
+        if (uiState == 2)
+            focus(latLng, type, id);
         if (uiState == 3)
             addRoutePosition(latLng);
         if (uiState == 4)
@@ -1279,12 +1307,19 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         Runnable onZoomChangeDelayed = new Runnable() {
             public void run() {
                 checkPlayerListVisibility();
-                for (Flag flag: game.flagList)
+                for (Flag flag: game.flagList) {
+                    if (flag.marker == null) continue;
                     flag.marker.setVisible(isMarkerVisible(flag.type, flag.points));
-                for (Food food: game.foodList)
+                }
+                for (Food food: game.foodList) {
+                    if (food.marker == null) continue;
                     food.marker.setVisible(isMarkerVisible("food", food.energy));
-                for (Bomb bomb: game.bombList)
+                }
+
+                for (Bomb bomb: game.bombList){
+                    if (bomb.marker == null) continue;
                     bomb.marker.setVisible(isMarkerVisible("bomb", bomb.energy));
+                }
             }
         };
 
@@ -1307,10 +1342,12 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                     (player.id == mPlayerId)    )
                 continue;
             if (++count <= 3) {
-                player.marker.setVisible(true); // os 3 primeiros sempres estarão visíveis (podium!!!)
+                if (player.marker != null)
+                    player.marker.setVisible(true); // os 3 primeiros sempres estarão visíveis (podium!!!)
                 continue;
             }
-            player.marker.setVisible(isMarkerVisible("player", player.energy));
+            if (player.marker != null)
+                player.marker.setVisible(isMarkerVisible("player", player.energy));
         }
     }
 

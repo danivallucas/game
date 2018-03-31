@@ -317,7 +317,7 @@ function onPlayerStop(player) {
     if ( ( (player.energy+1) - flag.energy) >= getDist(player.lat, player.lng, flag.lat, flag.lng)) {
       var oldPlayerId = -1;
       var oldPlayerFlagPoints = 0;
-      if (flag.playerId != undefined) {
+      if (flag.playerId != -1) {
         oldPlayerId = flag.playerId;
         playerList[oldPlayerId].flagPoints -= flag.points;
         oldPlayerFlagPoints = playerList[oldPlayerId].flagPoints;
@@ -464,6 +464,7 @@ io.on('connection', function (socket) {
       socket.emit('onNewPlayer', playerList.filter(Boolean).map(player => reject(player, ['scheduledMove', 'timeToRestore'])));
       socket.emit('onNewFood', foodList.filter(Boolean));
       socket.emit('onNewBomb', bombList.filter(Boolean));
+      socket.emit('onNewEnergyBall', energyBallList.filter(Boolean));
       socket.emit('onNewFlag', flagList);
       // legs...
       for (var i = 0; i < playerList.length; i++) {
