@@ -228,8 +228,13 @@ function onPlayerStop(player) {
       }
       return;
     }
-    // suficientemente grande para se dividir em 2 e criar pelo menos 3 energyBalls
-    var energyBallCount = Math.floor((player.energy/2)/conf.ENERGY_BALL_DEFAULT_ENERGY); // 30 de energia para cada bola a ser gerada
+    // suficientemente grande para se dividir em 2 e criar pelo menos 3 energyBalls de 30m
+    var energyBallEnergy = conf.ENERGY_BALL_DEFAULT_ENERGY;
+    var energyBallCount = Math.floor((player.energy/2)/energyBallEnergy);
+    while (energyBallCount > 10) {
+      energyBallEnergy += conf.ENERGY_BALL_DEFAULT_ENERGY;
+      energyBallCount = Math.floor((player.energy/2)/energyBallEnergy);
+    }
     var deltaDegree = 360/energyBallCount;
     var latBall = player.lat + metersToLat(player.lat, player.lng, player.energy); // a 1a vai ao Norte
     var lngBall = player.lng;
@@ -242,8 +247,8 @@ function onPlayerStop(player) {
         if (playerList[j].id == player.id) continue;
         if (playerList[j].status != 'in') continue;
         var player2 = playerList[j];
-        if ( (player2.energy - conf.ENERGY_BALL_DEFAULT_ENERGY) >= getDist(latBall, lngBall, player2.lat, player2.lng)) {
-          player2.energy += conf.ENERGY_BALL_DEFAULT_ENERGY;
+        if ( (player2.energy - energyBallEnergy) >= getDist(latBall, lngBall, player2.lat, player2.lng)) {
+          player2.energy += energyBallEnergy;
           io.emit('onEnergyChange', {id: player2.id, energy: player2.energy, energyToRestore: player2.energyToRestore});
           captured = true;
           break;
@@ -252,7 +257,7 @@ function onPlayerStop(player) {
       if (captured) continue;
       // não foi capturada por nenhum outro player -> cria no mapa
       var energyBallId = (energyBallList.indexOf(undefined) != -1) ? energyBallList.indexOf(undefined) : energyBallList.push(undefined) - 1;
-      energyBallList[energyBallId] = {id: energyBallId, type: 0, lat: latBall, lng: lngBall, energy: conf.ENERGY_BALL_DEFAULT_ENERGY, expire: Date.now() + conf.ENERGY_BALL_EXPIRE};
+      energyBallList[energyBallId] = {id: energyBallId, type: 0, lat: latBall, lng: lngBall, energy: energyBallEnergy, expire: Date.now() + conf.ENERGY_BALL_EXPIRE};
       newEnergyBallList.push(energyBallList[energyBallId]);
       var latLng = rotatePoint(latBall, lngBall, player.lat, player.lng, deltaDegree);
       latBall = latLng.lat;

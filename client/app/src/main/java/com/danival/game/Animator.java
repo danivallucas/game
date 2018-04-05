@@ -16,6 +16,7 @@ public class Animator implements Runnable {
     public void run() {
         for (int i = 0; i < main.game.playerList.size(); i++) {
             Player player = main.game.playerList.get(i);
+            if (player == null) continue;
             player.drawMoving();
         }
         main.animHandler.postDelayed(this, 300);

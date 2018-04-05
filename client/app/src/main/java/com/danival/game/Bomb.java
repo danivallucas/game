@@ -79,7 +79,8 @@ public class Bomb {
                 new Runnable() {
                     @Override
                     public void run() {
-                        bomb.setVisibility(View.GONE);
+                        if (bomb != null)
+                            bomb.setVisibility(View.GONE);
                         if (!removed) // pode ter sido removida antes do término da animação
                             drawOnMap();
                     }

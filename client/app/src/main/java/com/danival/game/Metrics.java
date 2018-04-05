@@ -27,55 +27,6 @@ public class Metrics {
         w = displayMetrics.widthPixels;
         h = displayMetrics.heightPixels;
 
-        playerWidth = (int) main.getResources().getDimension(R.dimen.player_icon_width);
-        //int playerLifeHeight = Math.round(8*density);
-        //int playerLifeMargin = Math.round(2*density);
-        int playerMarginTop = (int) main.getResources().getDimension(R.dimen.badge_margin); // espaço para o badge
-        int playerIconHeight = (int) main.getResources().getDimension(R.dimen.player_icon_height);
-        int playerNameHeight = (int) main.getResources().getDimension(R.dimen.player_name_height);
-        playerHeight = playerMarginTop + playerIconHeight + playerNameHeight;
-
-        faixa1 = Math.round(25*density); // status do cel
-        faixa2 = Math.round(36*density); // score
-        faixa4 = Math.round(30*density); // paginação
-        faixa5 = (int) main.getResources().getDimension(R.dimen.controls_container); // Barra de controle (botões de atacar, mover, etc)
-        faixa3 = h - (faixa1 + faixa2  + faixa4 + faixa5); // grid
-
-        hSpace = (w - 4*playerWidth)/ 4; // espaço que sobra divide por 4 (3 no meio e 1 dividido em 2 nos cantos)
-        hPadding = hSpace/2; // cantos
-        vSpace = (faixa3 - 5*playerHeight)/ 4;
-    }
-
-    public int getTopFaixa(int faixa) {
-        int top = 0;
-        switch (faixa) {
-            case 1:
-                top = 0;
-                break;
-            case 2:
-                top = faixa1;
-                break;
-            case 3:
-                top = faixa1 + faixa2;
-                break;
-            case 4:
-                top = faixa1 + faixa2 + faixa3;
-                break;
-            case 5:
-                top = faixa1 + faixa2 + faixa3 +faixa4;
-                break;
-        }
-        return top;
-    }
-
-    public int getSizeIcon4x4() {
-        int gridMargin = (int) main.getResources().getDimension(R.dimen.cell_grid_margin);
-        return Math.round( (playerWidth-(2*gridMargin)) / 2);
-    }
-
-    public int getSizeIcon9x9() {
-        int gridMargin = (int) main.getResources().getDimension(R.dimen.cell_grid_margin);
-        return Math.round( (playerWidth-(2*gridMargin)) / 3);
     }
 
 }

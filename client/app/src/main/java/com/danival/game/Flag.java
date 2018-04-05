@@ -67,7 +67,8 @@ public class Flag {
         color.setShadowLayer(0.5f, 1.0f, 1.0f, Color.WHITE);
         if (playerId >= 0) {// default é -1
             Player player = main.game.getPlayer(playerId);
-            canvasLabel.drawText(player.name, 20*main.metrics.density, 35*main.metrics.density, color);
+            if (player != null)
+                canvasLabel.drawText(player.name, 20*main.metrics.density, 35*main.metrics.density, color);
         }
         label = main.mMap.addGroundOverlay(new GroundOverlayOptions()
                 .image(BitmapDescriptorFactory.fromBitmap(bmpLabel))

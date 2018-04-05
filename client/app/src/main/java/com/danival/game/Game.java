@@ -27,6 +27,9 @@ public class Game {
     public List<Bomb> bombList;
     public List<EnergyBall> energyBallList;
     public List<Flag> flagList;
+    private Player mPlayer; // cache
+    private Player lastPlayerFound; // cache
+    private int lastPlayerFoundId;
 
     public Game(MainActivity context) {
         main = context;
@@ -35,6 +38,7 @@ public class Game {
         bombList = new ArrayList<Bomb>();
         energyBallList = new ArrayList<EnergyBall>();
         flagList = new ArrayList<Flag>();
+        lastPlayerFoundId = -1;
     }
 
     // *** Player ***
@@ -48,8 +52,18 @@ public class Game {
     }
 
     public Player getPlayer(int id) {
+        if ( (id == main.mPlayerId) && (mPlayer != null) ) return mPlayer;
+        if ( (id == lastPlayerFoundId) && (lastPlayerFound != null) ) return lastPlayerFound;
         int playerIndex = findPlayerIndex(id);
-        return (playerIndex == -1) ? null : playerList.get(playerIndex);
+        if (playerIndex == -1) {
+            return null;
+        } else {
+            lastPlayerFound = playerList.get(playerIndex);
+            lastPlayerFoundId = id;
+            if (id == main.mPlayerId)
+                mPlayer = lastPlayerFound;
+            return lastPlayerFound;
+        }
     }
 
 

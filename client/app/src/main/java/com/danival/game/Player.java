@@ -8,12 +8,14 @@ import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Paint;
 import android.graphics.Typeface;
+import android.os.Handler;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
@@ -51,6 +53,8 @@ public class Player {
     public LatLng position;
     public int energy;
     public int energyToRestore;
+    public int energyDelayed;
+    public int energyToRestoreDelayed;
     public double flagPoints;
     public List<RouteLeg> legList;
     public Circle energyUI;
@@ -61,6 +65,7 @@ public class Player {
     //public GroundOverlay label;
     private ColorMatrix colorMatrix;
     private ColorMatrixColorFilter colorFilter;
+    private Handler handler; //onEnergyChangeDelay
 
     public Player(MainActivity context, int _id, String _name, int _emoji, boolean _onLine, String _status, LatLng _position, int _energy, double _flagPoints, int _energyToRestore) {
         main = context;
@@ -129,7 +134,8 @@ public class Player {
         marker = main.mMap.addMarker(new MarkerOptions()
                 .position(position)
                 .icon(BitmapDescriptorFactory.fromBitmap(getIconBmp()))
-                .alpha(1f));
+                .alpha(1f)
+                .zIndex(1f));
         marker.setTag("Player:"+id);
 
         //float zoom = Math.max(1f, 19-(((float)energy - 10)/(5000-10)*(19-11))); // energia 10 = zoom 19, energia 5000 = zoom 11
@@ -304,11 +310,36 @@ public class Player {
     }
 
     public void onEnergyChange(int _energy, int _energyToRestore) {
-        energy = _energy;
-        energyToRestore = _energyToRestore;
-        drawEnergy();
-        //drawLabel();
-        main.game.drawRanking();
+        Runnable onEnergyChangeDelayed = new Runnable() {
+            public void run() {
+                int difEnergy = energyDelayed - energy;
+                Log.e("game", "energyDelayed: " + energyDelayed + " energy: " + energy + " difEnergy: " + difEnergy);
+                energy = energyDelayed;
+                energyToRestore = energyToRestoreDelayed;
+                drawEnergy();
+                //drawLabel();
+                main.game.drawRanking();
+                if (id == main.mPlayerId) {
+                    if (main.uiState == 2)
+                        main.changeUIState(2); // atualiza visibilidade dos botões
+                    if ( (main.uiState == 3) || (main.uiState == 4) || (main.uiState == 5) )
+                        main.onBtnCancelClick(null); // cancela a operação que estiver fazendo e vai para a tela inicial (uiState=2)
+                    if (difEnergy != 0) {
+                        Log.e("game", "trace...");
+                        Toast.makeText(main.getApplicationContext(), ( difEnergy > 0 ? "+" : "" ) + difEnergy , Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        };
+
+        Log.e("game", "_energy: " + _energy + " _energyToRestore: " + _energyToRestore);
+        energyDelayed = _energy;
+        energyToRestoreDelayed = _energyToRestore;
+        if (handler != null) {
+            handler.removeCallbacksAndMessages(null);
+        }
+        handler = new Handler();
+        handler.postDelayed(onEnergyChangeDelayed, 100);
     }
 
     public void onFlagPointsChange(double _flagPoints) {
@@ -371,6 +402,7 @@ public class Player {
     }
 
     public void showOriginMarker() {
+        if (marker == null) return;
         marker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.origin));
         marker.setAnchor(0.5F, 0.5F);
         if (energyUI != null) {
