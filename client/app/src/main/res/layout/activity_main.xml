@@ -38,7 +38,7 @@
 
     <TextView
         android:id="@+id/alert"
-        android:text="Conectando..."
+        android:text=""
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginLeft="25dp"
@@ -64,7 +64,7 @@
 
     <TextView
         android:id="@+id/version"
-        android:text="Versão: 0.17"
+        android:text="Versão: 0.18"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"

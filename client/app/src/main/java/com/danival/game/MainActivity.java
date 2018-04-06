@@ -305,6 +305,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         nMgr.cancelAll();
         splash_bg.setVisibility(View.VISIBLE);
         splash_icon.setVisibility(View.VISIBLE);
+        alert.setText("Conectando...");
         alert.setVisibility(View.VISIBLE);
         btnConnect.setVisibility(View.GONE);
         ranking.setVisibility(View.GONE);
@@ -1010,7 +1011,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
     public void onBtnConnectClick(View v) {
         btnConnect.setVisibility(View.GONE);
-        alert.setText("Conectando...");
         enterGame();
     }
 

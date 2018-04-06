@@ -212,6 +212,9 @@ public class Game {
     // *** Clear ***
 
     public void clear() {
+        mPlayer = null;
+        lastPlayerFound = null;
+        lastPlayerFoundId = -1;
         playerList.clear();
         foodList.clear();
         bombList.clear();
